@@ -1,0 +1,12 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["storycraft <storycraft@pancake.sh>"]
+
+[workspace.dependencies]
+reactive = { path = "crates/main" }
+reactive-macro = { path = "crates/macro" }
