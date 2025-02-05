@@ -28,6 +28,12 @@ impl Binding {
     }
 }
 
+impl Default for Binding {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[pin_project]
 #[derive(Debug)]
 pub(crate) struct HandleBinding {

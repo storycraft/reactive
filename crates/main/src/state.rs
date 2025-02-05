@@ -30,7 +30,7 @@ impl<T> StateCell<T> {
     }
 }
 
-impl<T: ?Sized + Default> StateCell<T> {
+impl<T: Default> StateCell<T> {
     #[inline]
     pub fn take(self: Pin<&Self>, binding: Pin<&Binding>) -> T {
         self.project_ref().tracker.register(binding);
@@ -42,7 +42,7 @@ impl<T: ?Sized + Default> StateCell<T> {
     }
 }
 
-impl<T: ?Sized + Copy> StateCell<T> {
+impl<T: Copy> StateCell<T> {
     #[inline]
     pub fn get(self: Pin<&Self>, binding: Pin<&Binding>) -> T {
         self.project_ref().tracker.register(binding);

@@ -60,3 +60,9 @@ impl DependencyTracker {
         });
     }
 }
+
+impl Default for DependencyTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}

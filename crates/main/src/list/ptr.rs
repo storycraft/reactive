@@ -8,7 +8,7 @@ pub struct EntryPtr<T: ?Sized>(NonNull<Entry<T>>);
 
 impl<T: ?Sized> EntryPtr<T> {
     pub fn new(node: &Entry<T>) -> Self {
-        Self(NonNull::from(&*node))
+        Self(NonNull::from(node))
     }
 
     #[inline]

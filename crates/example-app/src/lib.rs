@@ -48,7 +48,7 @@ async fn app() {
     let binding = pin!(Binding::new());
     let binding = binding.as_ref();
     let effect = pin!(Effect::new(|| {
-        text.set_inner_text(&format!("counter is updated to {}", counter.get(binding)));
+        text.set_inner_text(&format!("Counter is updated to {}", counter.get(binding)));
     }));
     effect.init();
 

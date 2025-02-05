@@ -131,7 +131,6 @@ impl<T: ?Sized> PinnedDrop for Entry<T> {
 }
 
 #[pin_project]
-#[repr(transparent)]
 pub struct Node<T> {
     #[pin]
     inner: Aliasable<Entry<T>>,
@@ -160,8 +159,8 @@ impl<T: Debug> Debug for Node<T> {
     }
 }
 
-#[derive(Debug, Deref)]
 #[repr(transparent)]
+#[derive(Debug, Deref)]
 struct Next<T: ?Sized>(Cell<Option<EntryPtr<T>>>);
 
 impl<T: ?Sized> Next<T> {
@@ -170,8 +169,8 @@ impl<T: ?Sized> Next<T> {
     }
 }
 
-#[derive(Debug, Deref)]
 #[repr(transparent)]
+#[derive(Debug, Deref)]
 struct Parent<T: ?Sized>(Cell<Option<NonNull<Next<T>>>>);
 
 impl<T: ?Sized> Parent<T> {
