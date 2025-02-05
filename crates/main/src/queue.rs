@@ -48,12 +48,9 @@ impl Queue {
             let queue = queue.as_ref();
             QUEUE.set(queue, || {
                 let list = queue.project_ref().list;
-                while !list.is_empty() {
-                    list.take(|list| {
-                        for entry in list.iter() {
-                            run_effect_handle(entry);
-                        }
-                    });
+                while let Some(entry) = list.iter().next() {
+                    entry.unlink();
+                    run_effect_handle(entry);
                 }
 
                 app.as_mut().poll(cx)
