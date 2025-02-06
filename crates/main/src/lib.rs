@@ -24,24 +24,24 @@ pub trait Component<'a> {
         NoChild
     }
 
-    fn resumed(self: Pin<&'a Self>, _el: &ActiveEventLoop) {}
-    fn suspended(self: Pin<&'a Self>, _el: &ActiveEventLoop) {}
+    fn resumed(self: Pin<&Self>, _el: &ActiveEventLoop) {}
+    fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {}
 
-    fn on_event(
-        self: Pin<&'a Self>,
+    fn on_window_event(
+        self: Pin<&Self>,
         _el: &ActiveEventLoop,
         _window_id: WindowId,
         _event: &mut WindowEvent,
     ) {
     }
+
+    fn about_to_wait(self: Pin<&Self>, _el: &ActiveEventLoop) {}
 }
 
 impl<'a, F: Fn() -> Fut, Fut: Future + 'a> Component<'a> for F {
-    fn setup(self: Pin<&'a Self>) -> impl Future<Output = Never> + 'a {
-        async move {
-            self().await;
-            pending().await
-        }
+    async fn setup(self: Pin<&'a Self>) -> Never {
+        self().await;
+        pending().await
     }
 }
 

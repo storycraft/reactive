@@ -29,7 +29,7 @@ struct WinitApp<'a, Fut> {
     fut: Pin<&'a mut Fut>,
 }
 
-impl<'a, Fut> WinitApp<'a, Fut>
+impl<Fut> WinitApp<'_, Fut>
 where
     Fut: Future<Output = Never>,
 {
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<'a, Fut> ApplicationHandler for WinitApp<'a, Fut>
+impl<Fut> ApplicationHandler for WinitApp<'_, Fut>
 where
     Fut: Future<Output = Never>,
 {
@@ -60,7 +60,7 @@ where
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
                 let component = unsafe { Pin::new_unchecked(&**entry.value()) };
-                component.on_event(el, window_id, &mut event);
+                component.on_window_event(el, window_id, &mut event);
             }
         });
     }
@@ -76,6 +76,16 @@ where
 
     fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
         self.poll();
+    }
+
+    fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+        
+        self.queue.as_ref().set(|| {
+            for entry in self.components.iter() {
+                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
+                component.about_to_wait(el);
+            }
+        });
     }
 }
 

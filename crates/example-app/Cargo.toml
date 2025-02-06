@@ -8,6 +8,7 @@ authors = { workspace = true }
 reactive = { workspace = true }
 reactivity = { workspace = true }
 
-winit = "0.30.8"
+winit = "0.30.9"
+glutin-winit = "0.5.0"
 futures = { version = "0.3.31", default-features = false }
 pin-project = "1.1.9"

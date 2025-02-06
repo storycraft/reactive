@@ -22,6 +22,12 @@ pub struct Queue {
     list: List<Handle>,
 }
 
+impl Default for Queue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Queue {
     pub fn new() -> Self {
         Self {

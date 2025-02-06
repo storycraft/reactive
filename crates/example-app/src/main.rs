@@ -1,8 +1,9 @@
 use core::pin::{pin, Pin};
 
 use futures::future::join;
+use glutin_winit::DisplayBuilder;
 use pin_project::pin_project;
-use reactive::{let_effect, render, run, window::Window, Component};
+use reactive::{let_effect, render, run, window::SkiaWindow, Component};
 use reactivity::state::StateCell;
 use winit::{
     event::WindowEvent,
@@ -12,13 +13,16 @@ use winit::{
 
 fn main() {
     run(async {
-        let window = pin!(Window::new(WindowAttributes::default()));
+        let window = pin!(SkiaWindow::new(
+            DisplayBuilder::new(),
+            WindowAttributes::default()
+        ));
         let window = window.as_ref();
-        let tracker = pin!(Tracker::new());
+        let tracker = pin!(MouseTracker::new());
         let tracker = tracker.as_ref();
 
         let_effect!(|| {
-            if let Some(window) = &*window.inner().get($) {
+            if let Some(window) = &*window.window().get($) {
                 println!("registered {:?}", window);
             }
         });
@@ -36,14 +40,20 @@ fn main() {
 
 #[derive(Debug)]
 #[pin_project]
-pub struct Tracker {
+pub struct MouseTracker {
     #[pin]
     x: StateCell<f64>,
     #[pin]
     y: StateCell<f64>,
 }
 
-impl Tracker {
+impl Default for MouseTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MouseTracker {
     pub fn new() -> Self {
         Self {
             x: StateCell::new(0.0),
@@ -60,9 +70,9 @@ impl Tracker {
     }
 }
 
-impl<'a> Component<'a> for Tracker {
-    fn on_event(
-        self: Pin<&'a Self>,
+impl Component<'_> for MouseTracker {
+    fn on_window_event(
+        self: Pin<&Self>,
         _el: &ActiveEventLoop,
         _window_id: WindowId,
         event: &mut WindowEvent,
