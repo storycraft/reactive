@@ -40,12 +40,8 @@ impl<T: ?Sized> List<T> {
         }
     }
 
-    pub fn is_empty(self: Pin<&Self>) -> bool {
-        self.project_ref().start.get().get().is_none()
-    }
-
-    pub fn iter(self: Pin<&Self>) -> Iter<T> {
-        Iter::from(self)
+    pub fn iter(&self) -> Iter<T> {
+        self.into_iter()
     }
 
     pub fn take<R>(self: Pin<&Self>, f: impl FnOnce(Pin<&Self>) -> R) -> R {
@@ -63,7 +59,7 @@ impl<T: ?Sized> List<T> {
         f(list)
     }
 
-    pub fn clear(self: Pin<&Self>) {
+    pub fn clear(&self) {
         for entry in self.iter() {
             entry.unlink();
         }
@@ -76,9 +72,9 @@ impl<T: ?Sized> Default for List<T> {
     }
 }
 
-impl<T: ?Sized> Debug for List<T> {
+impl<T: ?Sized + Debug> Debug for List<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("List").finish_non_exhaustive()
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -90,6 +86,7 @@ impl<T: ?Sized> PinnedDrop for List<T> {
 }
 
 #[pin_project(PinnedDrop)]
+#[derive(Debug)]
 pub struct Entry<T: ?Sized> {
     next: Next<T>,
     parent: Parent<T>,

@@ -24,10 +24,15 @@ impl<'a, T: ?Sized> Iterator for Iter<'a, T> {
     }
 }
 
-impl<'a, T: ?Sized> From<Pin<&'a List<T>>> for Iter<'a, T> {
-    fn from(list: Pin<&'a List<T>>) -> Self {
-        Self {
-            next: list.project_ref().start.get().get(),
+impl<'a, T: ?Sized> IntoIterator for &'a List<T> {
+    type Item = &'a Entry<T>;
+
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            // SAFETY: start is always unique and None if self is not pinned
+            next: unsafe { Pin::new_unchecked(&self.start) }.get().get(),
             _ph: PhantomData,
         }
     }

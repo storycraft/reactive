@@ -4,12 +4,10 @@ version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
 
-[lib]
-crate-type = ["cdylib"]
-
 [dependencies]
 reactive = { workspace = true }
+reactivity = { workspace = true }
 
-async_ui_web = { git = "https://github.com/wishawa/async_ui" }
-wasm-bindgen = "0.2.87" # 👈 For interfacing with JavaScript
-futures-lite = "2.6.0"
+winit = "0.30.8"
+futures = { version = "0.3.31", default-features = false }
+pin-project = "1.1.9"

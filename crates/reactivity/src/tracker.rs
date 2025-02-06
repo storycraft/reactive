@@ -8,10 +8,11 @@ use crate::{
         handle::{with_handle, HandleEntryPtr},
     },
     list::List,
-    Queue,
+    queue::Queue,
 };
 
 #[pin_project]
+#[derive(Debug)]
 pub struct DependencyTracker {
     #[pin]
     dependents: List<HandleBinding>,

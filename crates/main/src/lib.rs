@@ -1,20 +1,48 @@
-#![cfg_attr(feature = "no-std", no_std)]
+pub mod children;
+mod event_loop;
+pub mod window;
 
-pub mod effect;
-pub(crate) mod list;
-pub mod state;
-mod queue;
-pub mod tracker;
+use children::NoChild;
+use core::{
+    future::{pending, Future},
+    pin::Pin,
+};
+use never_say_never::Never;
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
 
-use core::{future::Future, pin::Pin};
+pub use event_loop::{render, run};
 
-use queue::Queue;
+pub trait Component<'a> {
+    fn setup(self: Pin<&'a Self>) -> impl Future<Output = Never> + 'a
+    where
+        Self: Sized,
+    {
+        NoChild
+    }
 
-pub trait Component {
-    fn init(self: Pin<&mut Self>);
+    fn resumed(self: Pin<&'a Self>, _el: &ActiveEventLoop) {}
+    fn suspended(self: Pin<&'a Self>, _el: &ActiveEventLoop) {}
+
+    fn on_event(
+        self: Pin<&'a Self>,
+        _el: &ActiveEventLoop,
+        _window_id: WindowId,
+        _event: &mut WindowEvent,
+    ) {
+    }
 }
 
-#[inline]
-pub async fn run<F: Future>(app: F) -> F::Output {
-    Queue::run(app).await
+impl<'a, F: Fn() -> Fut, Fut: Future + 'a> Component<'a> for F {
+    fn setup(self: Pin<&'a Self>) -> impl Future<Output = Never> + 'a {
+        async move {
+            self().await;
+            pending().await
+        }
+    }
+}
+
+impl<'a> Component<'a> for () {
+    fn setup(self: Pin<&'a Self>) -> impl Future<Output = Never> + 'a {
+        pending()
+    }
 }
