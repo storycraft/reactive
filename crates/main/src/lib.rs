@@ -1,3 +1,5 @@
+#[doc(hidden)]
+pub mod __private;
 pub mod children;
 mod event_loop;
 pub mod window;
@@ -11,6 +13,8 @@ use never_say_never::Never;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
 
 pub use event_loop::{render, run};
+
+pub use reactive_macro::{let_effect, Component};
 
 pub trait Component<'a> {
     fn setup(self: Pin<&'a Self>) -> impl Future<Output = Never> + 'a

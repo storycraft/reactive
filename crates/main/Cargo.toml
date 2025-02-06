@@ -8,6 +8,7 @@ authors = { workspace = true }
 no-std = []
 
 [dependencies]
+reactive-macro = { workspace = true }
 reactivity = { workspace = true }
 
 never-say-never = "6.6.666"

@@ -950,6 +950,7 @@ version = "0.1.0"
 dependencies = [
  "never-say-never",
  "pin-project",
+ "reactive-macro",
  "reactivity",
  "scoped-tls-hkt",
  "waker-fn",

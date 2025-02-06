@@ -2,11 +2,8 @@ use core::pin::{pin, Pin};
 
 use futures::future::join;
 use pin_project::pin_project;
-use reactive::{render, run, window::Window, Component};
-use reactivity::{
-    effect::{binding::Binding, Effect},
-    state::StateCell,
-};
+use reactive::{let_effect, render, run, window::Window, Component};
+use reactivity::state::StateCell;
 use winit::{
     event::WindowEvent,
     event_loop::ActiveEventLoop,
@@ -20,26 +17,18 @@ fn main() {
         let tracker = pin!(Tracker::new());
         let tracker = tracker.as_ref();
 
-        let binding = pin!(Binding::new());
-        let binding = binding.as_ref();
-        let effect = pin!(Effect::new(|| {
-            if let Some(window) = &*window.inner().get(binding) {
+        let_effect!(|| {
+            if let Some(window) = &*window.inner().get($) {
                 println!("registered {:?}", window);
             }
-        }));
-        effect.init();
+        });
 
-        let x = pin!(Binding::new());
-        let x = x.as_ref();
-        let y = pin!(Binding::new());
-        let y = y.as_ref();
-        let effect = pin!(Effect::new(|| {
-            let x = tracker.x().get(x);
-            let y = tracker.y().get(y);
+        let_effect!(|| {
+            let x = tracker.x().get($);
+            let y = tracker.y().get($);
 
-            println!("mouse position x: {x} y: {y}");
-        }));
-        effect.init();
+            println!("mouse position updated to x: {x} y: {y}");
+        });
 
         join(render(window), render(tracker)).await;
     });

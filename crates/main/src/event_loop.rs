@@ -1,8 +1,6 @@
 use core::{
     future::{pending, Future},
-    mem,
     pin::{pin, Pin},
-    ptr::NonNull,
     task::{Context, Waker},
 };
 
@@ -22,12 +20,12 @@ use winit::{
 
 use crate::Component;
 
-scoped_thread_local!(static COMPONENTS: for<'a> Pin<&'a List<NonNull<dyn for<'b> Component<'b>>>>);
+scoped_thread_local!(static COMPONENTS: for<'a> Pin<&'a List<*const dyn for<'b> Component<'b>>>);
 
 struct WinitApp<'a, Fut> {
     waker: Waker,
     queue: Pin<&'a mut Queue>,
-    components: Pin<&'a List<NonNull<dyn for<'b> Component<'b>>>>,
+    components: Pin<&'a List<*const dyn for<'b> Component<'b>>>,
     fut: Pin<&'a mut Fut>,
 }
 
@@ -52,7 +50,7 @@ where
     fn resumed(&mut self, el: &ActiveEventLoop) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(entry.value().as_ref()) };
+                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
                 component.resumed(el);
             }
         });
@@ -61,7 +59,7 @@ where
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(entry.value().as_ref()) };
+                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
                 component.on_event(el, window_id, &mut event);
             }
         });
@@ -70,7 +68,7 @@ where
     fn suspended(&mut self, el: &ActiveEventLoop) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(entry.value().as_ref()) };
+                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
                 component.suspended(el);
             }
         });
@@ -82,11 +80,8 @@ where
 }
 
 pub async fn render<T: for<'a> Component<'a>>(component: Pin<&T>) -> ! {
-    let ptr = unsafe {
-        mem::transmute::<NonNull<dyn Component>, NonNull<dyn for<'a> Component<'a>>>(NonNull::from(
-            &*component,
-        ))
-    };
+    let ptr = &*component as *const _ as *const _;
+
     let node = pin!(Node::new(ptr));
 
     if COMPONENTS.is_set() {
