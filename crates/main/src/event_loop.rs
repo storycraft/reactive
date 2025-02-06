@@ -1,15 +1,14 @@
+pub(crate) mod components;
+
 use core::{
     future::{pending, Future},
     pin::{pin, Pin},
     task::{Context, Waker},
 };
 
+use components::ComponentKey;
 use never_say_never::Never;
-use reactivity::{
-    list::{List, Node},
-    queue::Queue,
-};
-use scoped_tls_hkt::scoped_thread_local;
+use reactivity::{list::List, queue::Queue};
 use waker_fn::waker_fn;
 use winit::{
     application::ApplicationHandler,
@@ -20,12 +19,10 @@ use winit::{
 
 use crate::Component;
 
-scoped_thread_local!(static COMPONENTS: for<'a> Pin<&'a List<*const dyn for<'b> Component<'b>>>);
-
 struct WinitApp<'a, Fut> {
     waker: Waker,
     queue: Pin<&'a mut Queue>,
-    components: Pin<&'a List<*const dyn for<'b> Component<'b>>>,
+    components: Pin<&'a List<ComponentKey>>,
     fut: Pin<&'a mut Fut>,
 }
 
@@ -34,7 +31,7 @@ where
     Fut: Future<Output = Never>,
 {
     fn poll(&mut self) {
-        COMPONENTS.set(self.components.as_ref(), || {
+        ComponentKey::set(self.components.as_ref(), || {
             let _ = self
                 .queue
                 .as_mut()
@@ -50,8 +47,7 @@ where
     fn resumed(&mut self, el: &ActiveEventLoop) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
-                component.resumed(el);
+                entry.value().component().resumed(el);
             }
         });
     }
@@ -59,8 +55,10 @@ where
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
-                component.on_window_event(el, window_id, &mut event);
+                entry
+                    .value()
+                    .component()
+                    .on_window_event(el, window_id, &mut event);
             }
         });
     }
@@ -68,8 +66,7 @@ where
     fn suspended(&mut self, el: &ActiveEventLoop) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
-                component.suspended(el);
+                entry.value().component().suspended(el);
             }
         });
     }
@@ -77,30 +74,10 @@ where
     fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
         self.poll();
     }
-
-    fn about_to_wait(&mut self, el: &ActiveEventLoop) {
-        
-        self.queue.as_ref().set(|| {
-            for entry in self.components.iter() {
-                let component = unsafe { Pin::new_unchecked(&**entry.value()) };
-                component.about_to_wait(el);
-            }
-        });
-    }
 }
 
 pub async fn render<T: for<'a> Component<'a>>(component: Pin<&T>) -> ! {
-    let ptr = &*component as *const _ as *const _;
-
-    let node = pin!(Node::new(ptr));
-
-    if COMPONENTS.is_set() {
-        COMPONENTS.with(|list| {
-            list.push_front(node.as_ref().entry());
-        })
-    }
-
-    component.setup().await
+    ComponentKey::register(component).await
 }
 
 pub fn run<Fut: Future>(fut: Fut) {
@@ -115,7 +92,7 @@ pub fn run<Fut: Future>(fut: Fut) {
     });
 
     let components = pin!(List::new());
-    let components = components.as_ref();
+    let components = components.into_ref();
 
     let mut app = WinitApp {
         waker,

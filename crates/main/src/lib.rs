@@ -34,8 +34,6 @@ pub trait Component<'a> {
         _event: &mut WindowEvent,
     ) {
     }
-
-    fn about_to_wait(self: Pin<&Self>, _el: &ActiveEventLoop) {}
 }
 
 impl<'a, F: Fn() -> Fut, Fut: Future + 'a> Component<'a> for F {
