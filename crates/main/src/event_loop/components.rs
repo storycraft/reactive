@@ -12,9 +12,12 @@ pub struct ComponentKey {
 }
 
 impl ComponentKey {
-    pub fn component(&self) -> Pin<&(dyn for<'a> Component<'a> + '_)> {
+    pub fn with<R>(
+        &self,
+        f: impl for<'a> FnOnce(Pin<&'a (dyn for<'b> Component<'b> + 'a)>) -> R,
+    ) -> R {
         // SAFETY: Component is pinned and guaranteed won't drop before the Node drops
-        unsafe { Pin::new_unchecked(&*self.ptr) }
+        f(unsafe { Pin::new_unchecked(&*self.ptr) })
     }
 
     pub async fn register<T: for<'a> Component<'a>>(component: Pin<&T>) -> ! {

@@ -47,7 +47,7 @@ where
     fn resumed(&mut self, el: &ActiveEventLoop) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                entry.value().component().resumed(el);
+                entry.value().with(|component| component.resumed(el));
             }
         });
     }
@@ -57,8 +57,7 @@ where
             for entry in self.components.iter() {
                 entry
                     .value()
-                    .component()
-                    .on_window_event(el, window_id, &mut event);
+                    .with(|component| component.on_window_event(el, window_id, &mut event));
             }
         });
     }
@@ -66,7 +65,7 @@ where
     fn suspended(&mut self, el: &ActiveEventLoop) {
         self.queue.as_ref().set(|| {
             for entry in self.components.iter() {
-                entry.value().component().suspended(el);
+                entry.value().with(|component| component.suspended(el));
             }
         });
     }
