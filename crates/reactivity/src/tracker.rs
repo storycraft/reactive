@@ -36,7 +36,9 @@ impl DependencyTracker {
                     let handle_entry = dependent.value_pinned().to_handle();
 
                     if let Some(queue_entry) = handle_entry.to_queue() {
-                        queue.add(queue_entry);
+                        if !queue_entry.linked() {
+                            queue.add(queue_entry);
+                        }
                     } else {
                         continue;
                     }
