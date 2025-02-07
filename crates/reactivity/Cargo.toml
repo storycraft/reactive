@@ -16,7 +16,11 @@ reactivity-macro = { workspace = true, optional = true }
 derive_more = { version = "2.0.1", default-features = false, features = [
     "deref",
     "deref_mut",
+    "debug",
 ] }
 scoped-tls-hkt = "0.1.5"
 pinned-aliasable = "0.1.3"
 pin-project = "1.1.9"
+
+[dev-dependencies]
+pollster = "0.4.0"
