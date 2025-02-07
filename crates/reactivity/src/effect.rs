@@ -21,6 +21,8 @@ impl<'a> Effect<'a> {
         Self {
             inner: Node::new(Handle {
                 list: List::new(),
+                // `f` is exclusively borrowed during effect's lifetime.
+                // It will never move or dropped before the effect holding is.
                 f: NonNull::new(f as *mut _ as *mut (dyn FnMut() + 'static)).unwrap(),
             }),
             _ph: PhantomData,
