@@ -10,4 +10,4 @@ authors = ["storycraft <storycraft@pancake.sh>"]
 [workspace.dependencies]
 reactive = { path = "crates/main" }
 reactivity = { path = "crates/reactivity" }
-reactive-macro = { path = "crates/macro" }
+reactivity-macro = { path = "crates/reactivity-macro" }

@@ -5,9 +5,13 @@ edition = { workspace = true }
 authors = { workspace = true }
 
 [features]
+default = ["macros"]
 no-std = []
+macros = ["reactivity-macro"]
 
 [dependencies]
+reactivity-macro = { workspace = true, optional = true }
+
 derive_more = { version = "2.0.1", default-features = false, features = [
     "deref",
     "deref_mut",
