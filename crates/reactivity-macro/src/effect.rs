@@ -69,8 +69,9 @@ pub fn gen_effect(EffectDef { closure }: EffectDef) -> TokenStream {
 
     quote!(
         let #hidden = ::reactive::__private::bindings::<#len>();
+        let #hidden = &mut #tokens;
         let #hidden = ::core::pin::pin!(
-            ::reactive::__private::Effect::new(#tokens)
+            ::reactive::__private::Effect::new(#hidden)
         );
         ::reactive::__private::Effect::init(#hidden);
     )

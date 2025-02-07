@@ -1,7 +1,7 @@
 #[doc(hidden)]
 pub mod __private;
 pub mod children;
-pub mod drawable;
+pub mod element;
 pub mod event;
 mod event_loop;
 pub mod window;
