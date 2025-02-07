@@ -1,6 +1,6 @@
 use core::{
     cell::{Cell, Ref, RefCell},
-    fmt::{self, Debug, Formatter},
+    fmt::Debug,
     pin::Pin,
 };
 
@@ -8,10 +8,12 @@ use pin_project::pin_project;
 
 use crate::{effect::binding::Binding, tracker::DependencyTracker};
 
+#[derive(derive_more::Debug)]
 #[pin_project]
 pub struct StateCell<T: ?Sized> {
     #[pin]
     tracker: DependencyTracker,
+    #[debug(skip)]
     value: Cell<T>,
 }
 
@@ -60,16 +62,8 @@ impl<T: Copy> StateCell<T> {
     }
 }
 
-impl<T> Debug for StateCell<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("StateCell")
-            .field("tracker", &self.tracker)
-            .finish_non_exhaustive()
-    }
-}
-
-#[pin_project]
 #[derive(Debug)]
+#[pin_project]
 pub struct StateRefCell<T: ?Sized> {
     #[pin]
     tracker: DependencyTracker,

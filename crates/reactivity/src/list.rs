@@ -8,7 +8,6 @@ use core::{
     ptr::NonNull,
 };
 
-use derive_more::Deref;
 use iter::Iter;
 use pin_project::{pin_project, pinned_drop};
 use pinned_aliasable::Aliasable;
@@ -127,9 +126,11 @@ impl<T: ?Sized> PinnedDrop for Entry<T> {
     }
 }
 
+#[derive(derive_more::Debug)]
 #[pin_project]
 pub struct Node<T> {
     #[pin]
+    #[debug(skip)]
     inner: Aliasable<Entry<T>>,
 }
 
@@ -150,14 +151,8 @@ impl<T> Node<T> {
     }
 }
 
-impl<T: Debug> Debug for Node<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Node").finish_non_exhaustive()
-    }
-}
-
 #[repr(transparent)]
-#[derive(Debug, Deref)]
+#[derive(Debug, derive_more::Deref)]
 struct Next<T: ?Sized>(Cell<Option<EntryPtr<T>>>);
 
 impl<T: ?Sized> Next<T> {
@@ -167,7 +162,7 @@ impl<T: ?Sized> Next<T> {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Deref)]
+#[derive(Debug, derive_more::Deref)]
 struct Parent<T: ?Sized>(Cell<Option<NonNull<Next<T>>>>);
 
 impl<T: ?Sized> Parent<T> {
