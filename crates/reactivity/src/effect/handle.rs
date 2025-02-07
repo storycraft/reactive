@@ -11,14 +11,23 @@ use crate::{
 #[pin_project]
 pub struct EffectHandle {
     #[pin]
-    pub(super) bindings: List<EffectFnPtrSlot>,
+    bindings: List<EffectFnPtrSlot>,
     #[pin]
-    pub(super) to_queue: Node<NonNull<dyn FnMut()>>,
+    to_queue: Node<EffectFn>,
 }
 
 impl EffectHandle {
-    pub fn f(self: Pin<&Self>) -> NonNull<dyn FnMut()> {
-        *self.project_ref().to_queue.entry().value()
+    /// # Safety
+    /// Pointer to `f` must be valid to dereference *mutable* until [`EffectHandle`] drops.
+    pub unsafe fn new(f: NonNull<dyn FnMut()>) -> Self {
+        Self {
+            bindings: List::new(),
+            to_queue: Node::new(EffectFn(f)),
+        }
+    }
+
+    pub fn call_f(self: Pin<&Self>) {
+        self.project_ref().to_queue.entry().value().call();
     }
 
     pub fn init<'a>(self: Pin<&Self>, bindings: impl IntoIterator<Item = Pin<&'a Binding>>) {
@@ -35,7 +44,18 @@ impl EffectHandle {
     }
 }
 
-type EffectFnPtrEntry = Entry<NonNull<dyn FnMut()>>;
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct EffectFn(NonNull<dyn FnMut()>);
+
+impl EffectFn {
+    pub fn call(&self) {
+        let mut ptr = self.0;
+        unsafe { ptr.as_mut()() }
+    }
+}
+
+type EffectFnPtrEntry = Entry<EffectFn>;
 
 #[repr(transparent)]
 #[derive(Debug)]
@@ -48,11 +68,11 @@ impl EffectFnPtrSlot {
 }
 
 pub trait EffectFnPtrExt {
-    fn to_queue(&self) -> Option<&Entry<NonNull<dyn FnMut()>>>;
+    fn to_queue(&self) -> Option<&Entry<EffectFn>>;
 }
 
 impl EffectFnPtrExt for Entry<EffectFnPtrSlot> {
-    fn to_queue(&self) -> Option<&Entry<NonNull<dyn FnMut()>>> {
+    fn to_queue(&self) -> Option<&Entry<EffectFn>> {
         if self.linked() {
             // SAFETY: unless the entry is unlinked pointer is valid
             Some(unsafe { self.value().0.get().as_ref() })

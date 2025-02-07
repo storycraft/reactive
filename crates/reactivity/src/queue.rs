@@ -2,14 +2,16 @@ use core::{
     cell::Cell,
     future::Future,
     pin::{pin, Pin},
-    ptr::NonNull,
     task::{Context, Poll, Waker},
 };
 
 use pin_project::pin_project;
 use scoped_tls_hkt::scoped_thread_local;
 
-use crate::list::{Entry, List};
+use crate::{
+    effect::handle::EffectFn,
+    list::{Entry, List},
+};
 
 // TODO:: Use static fallback for single threaded no-std
 scoped_thread_local!(static QUEUE: for<'a> Pin<&'a Queue>);
@@ -18,7 +20,7 @@ scoped_thread_local!(static QUEUE: for<'a> Pin<&'a Queue>);
 pub struct Queue {
     waker: Cell<Option<Waker>>,
     #[pin]
-    updates: List<NonNull<dyn FnMut()>>,
+    updates: List<EffectFn>,
 }
 
 impl Default for Queue {
@@ -60,17 +62,14 @@ impl Queue {
             let updates = queue.project_ref().updates;
             while let Some(entry) = updates.iter().next() {
                 entry.unlink();
-
-                let mut f = *entry.value();
-                // SAFETY: Due to constraint in EffectHandle::init, this is safe to deref mut
-                (unsafe { f.as_mut() })();
+                entry.value().call();
             }
 
             fut.poll(cx)
         })
     }
 
-    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<NonNull<dyn FnMut()>>) {
+    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<EffectFn>) {
         self.project_ref().updates.push_front(entry);
         if let Some(waker) = self.waker.take() {
             waker.wake();
