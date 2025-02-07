@@ -1,4 +1,4 @@
-use core::{cell::RefCell, num::NonZeroU32, pin::Pin};
+use core::{cell::RefCell, ffi::CStr, num::NonZeroU32, pin::Pin};
 use std::ffi::CString;
 
 use gl::types::GLint;
@@ -64,9 +64,7 @@ impl Component<'_> for SkiaWindow {
         // TODO:: error handling
         let (window, gl_config, gl_cx) = match this.state.replace(GlState::Invalid) {
             GlState::Uninit { builder } => {
-                let template = ConfigTemplateBuilder::new()
-                    .with_alpha_size(8)
-                    .with_transparency(true);
+                let template = ConfigTemplateBuilder::new().with_alpha_size(8);
 
                 let Ok((Some(window), gl_config)) = builder.build(el, template, gl_config_picker)
                 else {
@@ -149,15 +147,38 @@ impl Component<'_> for SkiaWindow {
             }
         };
 
-        let num_samples = gl_config.num_samples() as usize;
-        let stencil_size = gl_config.stencil_size() as usize;
+        let num_samples = gl_config.num_samples();
+        let stencil_size = gl_config.stencil_size();
 
-        let skia_surface =
-            create_skia_surface(&window, fb_info, &mut gr_cx, num_samples, stencil_size);
+        let size = window.inner_size();
+        let skia_surface = create_skia_surface(
+            (size.width as _, size.height as _),
+            fb_info,
+            &mut gr_cx,
+            num_samples as _,
+            stencil_size as _,
+        );
+
+        println!(
+            "Running on {}",
+            (unsafe { CStr::from_ptr(gl::GetString(gl::RENDERER).cast()) }).to_string_lossy()
+        );
+        println!(
+            "OpenGL Version {}",
+            (unsafe { CStr::from_ptr(gl::GetString(gl::VERSION).cast()) }).to_string_lossy()
+        );
+        println!(
+            "Shaders version on {}",
+            (unsafe { CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION).cast()) })
+                .to_string_lossy()
+        );
 
         this.state.replace(GlState::Init {
             gl_cx,
             gr_cx,
+            num_samples,
+            stencil_size,
+            fb_info,
             gl_surface,
             skia_surface,
         });
@@ -194,6 +215,9 @@ impl Component<'_> for SkiaWindow {
         let GlState::Init {
             gl_cx,
             gr_cx,
+            stencil_size,
+            num_samples,
+            fb_info,
             gl_surface,
             skia_surface,
             ..
@@ -204,13 +228,17 @@ impl Component<'_> for SkiaWindow {
 
         match event {
             WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
-                *skia_surface = skia_surface
-                    .new_surface_with_dimensions((size.width as _, size.height as _))
-                    .unwrap();
                 gl_surface.resize(
                     gl_cx,
                     NonZeroU32::new(size.width).unwrap(),
                     NonZeroU32::new(size.height).unwrap(),
+                );
+                *skia_surface = create_skia_surface(
+                    (size.width as _, size.height as _),
+                    *fb_info,
+                    gr_cx,
+                    *num_samples as _,
+                    *stencil_size as _,
                 );
             }
 
@@ -251,6 +279,11 @@ enum GlState {
     Init {
         gl_cx: PossiblyCurrentContext,
         gr_cx: DirectContext,
+
+        num_samples: u8,
+        stencil_size: u8,
+        fb_info: FramebufferInfo,
+
         gl_surface: glutin::surface::Surface<WindowSurface>,
         skia_surface: skia_safe::Surface,
     },
@@ -314,17 +347,12 @@ fn create_gl_context(window: &Window, gl_config: &Config) -> NotCurrentContext {
 }
 
 fn create_skia_surface(
-    window: &Window,
+    size: (i32, i32),
     fb_info: FramebufferInfo,
     gr_context: &mut DirectContext,
     num_samples: usize,
     stencil_size: usize,
 ) -> skia_safe::Surface {
-    let size = window.inner_size();
-    let size = (
-        size.width.try_into().expect("Could not convert width"),
-        size.height.try_into().expect("Could not convert height"),
-    );
     let backend_render_target =
         backend_render_targets::make_gl(size, num_samples, stencil_size, fb_info);
 
