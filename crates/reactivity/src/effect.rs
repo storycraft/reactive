@@ -26,7 +26,7 @@ impl<'a> Effect<'a> {
                 // `f` is exclusively borrowed during effect's lifetime.
                 // It will never move or dropped before the effect holding is.
                 to_queue: Node::new(
-                    NonNull::new(f as *mut _ as *mut (dyn FnMut() + 'static)).unwrap(),
+                    NonNull::new(f as *mut _ as *mut _).unwrap(),
                 ),
             },
             _ph: PhantomData,

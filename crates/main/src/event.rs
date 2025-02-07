@@ -12,6 +12,12 @@ pub struct EventTarget<T: ?Sized> {
     list: List<*mut dyn FnMut(&mut T) -> bool>,
 }
 
+impl<T: ?Sized> Default for EventTarget<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: ?Sized> EventTarget<T> {
     pub fn new() -> Self {
         Self { list: List::new() }

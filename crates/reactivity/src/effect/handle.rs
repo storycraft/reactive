@@ -35,12 +35,14 @@ impl EffectHandle {
     }
 }
 
+type EffectFnPtrEntry = Entry<NonNull<dyn FnMut()>>;
+
 #[repr(transparent)]
 #[derive(Debug)]
-pub(crate) struct EffectFnPtrSlot(Cell<NonNull<Entry<NonNull<dyn FnMut()>>>>);
+pub(crate) struct EffectFnPtrSlot(Cell<NonNull<EffectFnPtrEntry>>);
 
 impl EffectFnPtrSlot {
-    pub const fn new(inner: NonNull<Entry<NonNull<dyn FnMut()>>>) -> Self {
+    pub const fn new(inner: NonNull<EffectFnPtrEntry>) -> Self {
         Self(Cell::new(inner))
     }
 }

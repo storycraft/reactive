@@ -14,7 +14,7 @@ pub fn init_effect(effect: Pin<&mut Effect>, bindings: Pin<&[Binding]>) {
     // SAFETY: Perform structural pinning
     effect.init(
         bindings
-            .into_iter()
+            .iter()
             .map(|binding| unsafe { Pin::new_unchecked(binding) }),
     );
 }

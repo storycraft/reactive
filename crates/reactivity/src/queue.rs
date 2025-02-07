@@ -56,13 +56,13 @@ impl Queue {
         }
 
         let queue = self.into_ref();
-        QUEUE.set(queue, || {
+        queue.set(move || {
             let updates = queue.project_ref().updates;
             while let Some(entry) = updates.iter().next() {
                 entry.unlink();
 
                 let mut f = *entry.value();
-                // SAFETY: Due to constraint in EffectHandle::init, this is safe to deref mut 
+                // SAFETY: Due to constraint in EffectHandle::init, this is safe to deref mut
                 (unsafe { f.as_mut() })();
             }
 
