@@ -1,5 +1,3 @@
-#[doc(hidden)]
-pub mod __private;
 pub mod children;
 pub mod element;
 pub mod event;

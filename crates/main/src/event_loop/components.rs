@@ -27,7 +27,7 @@ impl ComponentKey {
 
         if COMPONENTS.is_set() {
             COMPONENTS.with(|list| {
-                list.push_front(node.as_ref().entry());
+                list.push_front(node.into_ref().entry());
             })
         }
 

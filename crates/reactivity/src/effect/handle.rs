@@ -1,50 +1,46 @@
 use core::{cell::Cell, pin::Pin, ptr::NonNull};
 
-use derive_more::{Deref, DerefMut};
+use derive_more::Deref;
 use pin_project::pin_project;
-use scoped_tls_hkt::scoped_thread_local;
 
-use crate::list::{Entry, List};
+use crate::{
+    binding::Binding,
+    list::{Entry, List, Node},
+};
 
 #[derive(Debug)]
 #[pin_project]
-pub struct Handle {
+pub struct EffectHandle {
     #[pin]
-    pub(super) list: List<Cell<HandleEntryPtr>>,
-    pub(super) f: NonNull<dyn FnMut()>,
+    pub(super) bindings: List<EffectFnPtrSlot>,
+    #[pin]
+    pub(super) to_queue: Node<NonNull<dyn FnMut()>>,
 }
 
-impl Handle {
-    pub fn list(self: Pin<&Self>) -> Pin<&List<Cell<HandleEntryPtr>>> {
-        self.project_ref().list
+impl EffectHandle {
+    pub fn f(self: Pin<&Self>) -> NonNull<dyn FnMut()> {
+        *self.project_ref().to_queue.entry().value()
+    }
+
+    pub fn init<'a>(self: Pin<&Self>, bindings: impl IntoIterator<Item = Pin<&'a Binding>>) {
+        let this = self.project_ref();
+        let entry_ptr = NonNull::from(this.to_queue.entry());
+
+        for binding in bindings {
+            let to_handle = binding.to_handle();
+            to_handle.value().set(entry_ptr);
+
+            this.bindings.push_front(to_handle);
+        }
     }
 }
 
 #[repr(transparent)]
-#[derive(Debug, Clone, Copy, Deref, DerefMut)]
-pub(crate) struct HandleEntryPtr(Option<NonNull<Entry<Handle>>>);
+#[derive(Debug, Deref)]
+pub(crate) struct EffectFnPtrSlot(Cell<NonNull<Entry<NonNull<dyn FnMut()>>>>);
 
-impl HandleEntryPtr {
-    pub const fn new(inner: Option<NonNull<Entry<Handle>>>) -> Self {
-        Self(inner)
+impl EffectFnPtrSlot {
+    pub const fn new(inner: NonNull<Entry<NonNull<dyn FnMut()>>>) -> Self {
+        Self(Cell::new(inner))
     }
-}
-
-impl Default for HandleEntryPtr {
-    fn default() -> Self {
-        Self::new(None)
-    }
-}
-
-scoped_thread_local!(static CURRENT: Entry<Handle>);
-
-pub fn with_handle(f: impl FnOnce(&Entry<Handle>)) {
-    if CURRENT.is_set() {
-        CURRENT.with(f);
-    }
-}
-
-pub fn run_effect_handle(entry: &Entry<Handle>) {
-    let mut f = entry.value().f;
-    CURRENT.set(entry, unsafe { f.as_mut() });
 }

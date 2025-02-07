@@ -2,16 +2,14 @@ use core::{
     cell::Cell,
     future::Future,
     pin::{pin, Pin},
+    ptr::NonNull,
     task::{Context, Poll, Waker},
 };
 
 use pin_project::pin_project;
 use scoped_tls_hkt::scoped_thread_local;
 
-use crate::{
-    effect::handle::{run_effect_handle, Handle},
-    list::{Entry, List},
-};
+use crate::list::{Entry, List};
 
 scoped_thread_local!(static QUEUE: for<'a> Pin<&'a Queue>);
 
@@ -19,7 +17,7 @@ scoped_thread_local!(static QUEUE: for<'a> Pin<&'a Queue>);
 pub struct Queue {
     waker: Cell<Option<Waker>>,
     #[pin]
-    list: List<Handle>,
+    updates: List<NonNull<dyn FnMut()>>,
 }
 
 impl Default for Queue {
@@ -32,7 +30,7 @@ impl Queue {
     pub fn new() -> Self {
         Self {
             waker: Cell::new(None),
-            list: List::new(),
+            updates: List::new(),
         }
     }
 
@@ -56,20 +54,22 @@ impl Queue {
             *waker = Some(cx.waker().clone());
         }
 
-        let queue = self.as_ref();
+        let queue = self.into_ref();
         QUEUE.set(queue, || {
-            let list = queue.project_ref().list;
-            while let Some(entry) = list.iter().next() {
+            let updates = queue.project_ref().updates;
+            while let Some(entry) = updates.iter().next() {
                 entry.unlink();
-                run_effect_handle(entry);
+
+                let mut f = *entry.value();
+                (unsafe { f.as_mut() })();
             }
 
             fut.poll(cx)
         })
     }
 
-    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<Handle>) {
-        self.project_ref().list.push_front(entry);
+    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<NonNull<dyn FnMut()>>) {
+        self.project_ref().updates.push_front(entry);
         if let Some(waker) = self.waker.take() {
             waker.wake();
         }

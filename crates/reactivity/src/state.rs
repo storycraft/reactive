@@ -6,7 +6,7 @@ use core::{
 
 use pin_project::pin_project;
 
-use crate::{effect::binding::Binding, tracker::DependencyTracker};
+use crate::{binding::Binding, tracker::DependencyTracker};
 
 #[derive(derive_more::Debug)]
 #[pin_project]

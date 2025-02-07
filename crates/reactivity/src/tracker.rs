@@ -1,12 +1,9 @@
-use core::{pin::Pin, ptr::NonNull};
+use core::pin::Pin;
 
 use pin_project::pin_project;
 
 use crate::{
-    effect::{
-        binding::{Binding, HandleBinding},
-        handle::{with_handle, HandleEntryPtr},
-    },
+    binding::{Binding, TrackerBinding},
     list::List,
     queue::Queue,
 };
@@ -15,7 +12,7 @@ use crate::{
 #[derive(Debug)]
 pub struct DependencyTracker {
     #[pin]
-    dependents: List<HandleBinding>,
+    dependents: List<TrackerBinding>,
 }
 
 impl DependencyTracker {
@@ -26,33 +23,21 @@ impl DependencyTracker {
     }
 
     pub fn register(self: Pin<&Self>, binding: Pin<&Binding>) {
-        with_handle(move |handle| {
-            let handle_entry = binding.handle_entry();
-            handle_entry
-                .value()
-                .set(HandleEntryPtr::new(Some(NonNull::from(handle))));
-            handle.value_pinned().list().push_front(handle_entry);
-
-            self.project_ref()
-                .dependents
-                .push_front(binding.binding_entry());
-        });
+        self.project_ref()
+            .dependents
+            .push_front(binding.to_tracker());
     }
 
     pub fn notify(self: Pin<&Self>) {
         Queue::with(|queue| {
             self.project_ref().dependents.take(|dependents| {
                 for entry in dependents.iter() {
-                    let entry = entry.value_pinned().handle_entry();
+                    let entry = entry.value_pinned().to_handle();
                     if !entry.linked() {
                         continue;
                     }
 
-                    let Some(ptr) = *entry.value().take() else {
-                        continue;
-                    };
-
-                    let entry = unsafe { ptr.as_ref() };
+                    let entry = unsafe { entry.value().get().as_ref() };
                     if !entry.linked() {
                         queue.add(entry);
                     }

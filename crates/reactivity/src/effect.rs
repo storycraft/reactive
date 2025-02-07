@@ -1,35 +1,42 @@
-pub mod binding;
 pub(crate) mod handle;
 
 use core::{marker::PhantomData, pin::Pin, ptr::NonNull};
 
-use handle::{run_effect_handle, Handle};
+use handle::EffectHandle;
 use pin_project::pin_project;
 
-use crate::list::{List, Node};
+use crate::{
+    binding::Binding,
+    list::{List, Node},
+};
 
 #[derive(Debug)]
 #[pin_project]
 pub struct Effect<'a> {
     #[pin]
-    inner: Node<Handle>,
+    handle: EffectHandle,
     _ph: PhantomData<&'a ()>,
 }
 
 impl<'a> Effect<'a> {
     pub fn new(f: &'a mut dyn FnMut()) -> Self {
         Self {
-            inner: Node::new(Handle {
-                list: List::new(),
+            handle: EffectHandle {
+                bindings: List::new(),
                 // `f` is exclusively borrowed during effect's lifetime.
                 // It will never move or dropped before the effect holding is.
-                f: NonNull::new(f as *mut _ as *mut (dyn FnMut() + 'static)).unwrap(),
-            }),
+                to_queue: Node::new(
+                    NonNull::new(f as *mut _ as *mut (dyn FnMut() + 'static)).unwrap(),
+                ),
+            },
             _ph: PhantomData,
         }
     }
 
-    pub fn init(self: Pin<&mut Self>) {
-        run_effect_handle(self.project().inner.as_ref().entry());
+    pub fn init<'b>(self: Pin<&mut Self>, bindings: impl IntoIterator<Item = Pin<&'b Binding>>) {
+        let handle = self.project().handle.into_ref();
+        handle.init(bindings);
+
+        (unsafe { handle.f().as_mut() })();
     }
 }

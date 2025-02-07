@@ -17,9 +17,9 @@ fn main() {
             DisplayBuilder::new(),
             WindowAttributes::default()
         ));
-        let window = window.as_ref();
+        let window = window.into_ref();
         let tracker = pin!(MouseTracker::new());
-        let tracker = tracker.as_ref();
+        let tracker = tracker.into_ref();
 
         let_effect!(|| {
             if let Some(window) = &*window.window().get($) {

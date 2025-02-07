@@ -80,7 +80,7 @@ impl<T: ?Sized + Debug> Debug for List<T> {
 #[pinned_drop]
 impl<T: ?Sized> PinnedDrop for List<T> {
     fn drop(self: Pin<&mut Self>) {
-        self.as_ref().clear();
+        self.into_ref().clear();
     }
 }
 
@@ -182,14 +182,14 @@ mod tests {
     #[test]
     fn test() {
         let list = pin!(List::new());
-        let list = list.as_ref();
+        let list = list.into_ref();
         let list2 = pin!(List::new());
-        let list2 = list2.as_ref();
+        let list2 = list2.into_ref();
 
         let node1 = pin!(Node::new(1234));
         let node2 = pin!(Node::new(5678));
-        let entry1 = node1.as_ref().entry();
-        let entry2 = node2.as_ref().entry();
+        let entry1 = node1.into_ref().entry();
+        let entry2 = node2.into_ref().entry();
         list.push_front(entry2);
         list.push_front(entry1);
 

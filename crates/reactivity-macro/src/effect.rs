@@ -63,16 +63,19 @@ impl<'a> BindingGen<'a> {
 }
 
 pub fn gen_effect(EffectDef { closure }: EffectDef) -> TokenStream {
-    let hidden = Ident::new("_effect", Span::mixed_site());
-
-    let (len, tokens) = BindingGen::transform(&hidden, closure);
+    let effect = Ident::new("_effect", Span::mixed_site());
+    let bindings = Ident::new("_bindings", Span::mixed_site());
+    let (len, tokens) = BindingGen::transform(&bindings, closure);
 
     quote!(
-        let #hidden = ::reactive::__private::bindings::<#len>();
-        let #hidden = &mut #tokens;
-        let #hidden = ::core::pin::pin!(
-            ::reactive::__private::Effect::new(#hidden)
+        let #bindings = ::core::pin::pin!(
+            ::reactivity::__private::bindings::<#len>()
         );
-        ::reactive::__private::Effect::init(#hidden);
+        let #bindings = #bindings.into_ref();
+        let #effect = &mut { #tokens };
+        let #effect = ::core::pin::pin!(
+            ::reactivity::effect::Effect::new(#effect)
+        );
+        ::reactivity::__private::init_effect(#effect, #bindings);
     )
 }
