@@ -1,5 +1,5 @@
 # Tbd
-Zero cost fine grained reactivity system
+Experimental zero cost fine grained reactivity system
 
 * `crates/example-app`: Minimal example of winit + skia with the reactivity system
 * `crates/reactivity-macro`: Boilerplate proc-macro
