@@ -183,7 +183,7 @@ impl Component<'_> for SkiaWindow {
             skia_surface,
         });
 
-        self.project_ref().window.set(Some(window));
+        self.window().set(Some(window));
     }
 
     fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {

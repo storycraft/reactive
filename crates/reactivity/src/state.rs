@@ -1,5 +1,5 @@
 use core::{
-    cell::{Cell, Ref, RefCell},
+    cell::{self, Cell, RefCell},
     fmt::Debug,
     pin::Pin,
 };
@@ -27,8 +27,8 @@ impl<T> StateCell<T> {
 
     #[inline]
     pub fn set(self: Pin<&Self>, value: T) {
-        self.project_ref().tracker.notify();
         self.set_untracked(value);
+        self.project_ref().tracker.notify();
     }
 
     pub fn set_untracked(self: Pin<&Self>, value: T) {
@@ -47,6 +47,11 @@ impl<T: Default> StateCell<T> {
     pub fn take(self: Pin<&Self>) -> T {
         self.project_ref().tracker.notify();
         self.value.take()
+    }
+
+    pub fn update(self: Pin<&Self>, f: impl FnOnce(T) -> T) {
+        self.value.set(f(self.value.take()));
+        self.project_ref().tracker.notify();
     }
 }
 
@@ -88,13 +93,39 @@ impl<T> StateRefCell<T> {
         *self.value.borrow_mut() = value;
     }
 
-    pub fn get(self: Pin<&Self>, binding: Pin<&Binding>) -> Ref<'_, T> {
+    pub fn get(self: Pin<&Self>, binding: Pin<&Binding>) -> cell::Ref<'_, T> {
         let this = self.project_ref();
         this.tracker.register(binding);
         this.value.borrow()
     }
 
-    pub fn get_untracked(&self) -> Ref<'_, T> {
+    pub fn get_untracked(&self) -> cell::Ref<'_, T> {
         self.value.borrow()
+    }
+
+    pub fn get_mut(self: Pin<&Self>) -> Guard<'_, T> {
+        let this = self.project_ref();
+        Guard {
+            tracker: this.tracker,
+            inner: this.value.borrow_mut(),
+        }
+    }
+
+    pub fn get_mut_untracked(&self) -> cell::RefMut<'_, T> {
+        self.value.borrow_mut()
+    }
+}
+
+#[derive(Debug, derive_more::Deref, derive_more::DerefMut)]
+pub struct Guard<'a, T> {
+    tracker: Pin<&'a DependencyTracker>,
+    #[deref]
+    #[deref_mut]
+    inner: cell::RefMut<'a, T>,
+}
+
+impl<T> Drop for Guard<'_, T> {
+    fn drop(&mut self) {
+        self.tracker.notify();
     }
 }
