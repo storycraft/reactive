@@ -4,6 +4,7 @@ use pin_project::pin_project;
 
 use crate::{
     binding::{Binding, TrackerBinding},
+    effect::handle::EffectFnPtrExt,
     list::List,
     queue::Queue,
 };
@@ -31,15 +32,13 @@ impl DependencyTracker {
     pub fn notify(self: Pin<&Self>) {
         Queue::with(|queue| {
             self.project_ref().dependents.take(|dependents| {
-                for entry in dependents.iter() {
-                    let entry = entry.value_pinned().to_handle();
-                    if !entry.linked() {
-                        continue;
-                    }
+                for dependent in dependents.iter() {
+                    let handle_entry = dependent.value_pinned().to_handle();
 
-                    let entry = unsafe { entry.value().get().as_ref() };
-                    if !entry.linked() {
-                        queue.add(entry);
+                    if let Some(queue_entry) = handle_entry.to_queue() {
+                        queue.add(queue_entry);
+                    } else {
+                        continue;
                     }
                 }
             });

@@ -37,6 +37,7 @@ impl<'a> Effect<'a> {
         let handle = self.project().handle.into_ref();
         handle.init(bindings);
 
+        // SAFETY: Safe to deref mut due to a constraint in constructor
         (unsafe { handle.f().as_mut() })();
     }
 }

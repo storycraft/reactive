@@ -27,6 +27,7 @@ impl<'a> BindingGen<'a> {
                     let index = self.bindings;
                     self.bindings += 1;
 
+                    // structural pinning
                     buf.extend(quote!(
                     unsafe {
                         ::core::pin::Pin::new_unchecked(&#binding_list[#index])
@@ -62,7 +63,7 @@ impl<'a> BindingGen<'a> {
     }
 }
 
-pub fn gen_effect(EffectDef { closure }: EffectDef) -> TokenStream {
+pub fn gen(EffectDef { closure }: EffectDef) -> TokenStream {
     let effect = Ident::new("_effect", Span::mixed_site());
     let bindings = Ident::new("_bindings", Span::mixed_site());
     let (len, tokens) = BindingGen::transform(&bindings, closure);

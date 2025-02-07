@@ -33,6 +33,7 @@ impl<T: ?Sized> List<T> {
         entry.parent.set(Some(NonNull::from(start)));
 
         if let Some(old) = start.replace(Some(EntryPtr::new(entry))) {
+            // SAFETY: Replace parent of linked start node
             unsafe { old.as_ref() }
                 .parent
                 .set(Some(NonNull::from(&entry.next)));
@@ -80,6 +81,7 @@ impl<T: ?Sized + Debug> Debug for List<T> {
 #[pinned_drop]
 impl<T: ?Sized> PinnedDrop for List<T> {
     fn drop(self: Pin<&mut Self>) {
+        // Unlink all entries before dropping list
         self.into_ref().clear();
     }
 }
@@ -99,7 +101,7 @@ impl<T: ?Sized> Entry<T> {
     }
 
     pub fn value_pinned(&self) -> Pin<&T> {
-        // Safety: Reference to Entry is obtained only from pinned Node
+        // SAFETY: Reference to Entry is obtained only from pinned Node
         unsafe { Pin::new_unchecked(self) }.project_ref().value
     }
 
@@ -112,8 +114,10 @@ impl<T: ?Sized> Entry<T> {
             let next = self.next.take();
 
             if let Some(next) = next {
+                // SAFETY: pointer is valid as long as linked
                 unsafe { next.as_ref() }.parent.set(Some(parent));
             }
+            // SAFETY: pointer is valid as long as linked
             unsafe { parent.as_ref() }.set(next);
         }
     }
@@ -122,6 +126,7 @@ impl<T: ?Sized> Entry<T> {
 #[pinned_drop]
 impl<T: ?Sized> PinnedDrop for Entry<T> {
     fn drop(self: Pin<&mut Self>) {
+        // unlink from list before drop
         self.unlink();
     }
 }

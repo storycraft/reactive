@@ -7,6 +7,7 @@ use pin_project::pin_project;
 
 #[derive(Debug)]
 #[pin_project]
+/// Connection to dependency tracker and effect handle
 pub struct Binding {
     /// Node connected to dependency tracker
     #[pin]
@@ -22,10 +23,12 @@ impl Binding {
         }
     }
 
+    /// Entry connecting to dependency tracker
     pub(crate) fn to_tracker(self: Pin<&Self>) -> &Entry<TrackerBinding> {
         self.project_ref().to_tracker.entry()
     }
 
+    /// Entry connecting to handle
     pub(crate) fn to_handle(self: Pin<&Self>) -> &Entry<EffectFnPtrSlot> {
         self.to_tracker().value_pinned().to_handle()
     }

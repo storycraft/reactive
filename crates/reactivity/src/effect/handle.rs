@@ -1,6 +1,5 @@
 use core::{cell::Cell, pin::Pin, ptr::NonNull};
 
-use derive_more::Deref;
 use pin_project::pin_project;
 
 use crate::{
@@ -28,7 +27,8 @@ impl EffectHandle {
 
         for binding in bindings {
             let to_handle = binding.to_handle();
-            to_handle.value().set(entry_ptr);
+            // This pointer is valid as long as linked
+            to_handle.value().0.set(entry_ptr);
 
             this.bindings.push_front(to_handle);
         }
@@ -36,11 +36,26 @@ impl EffectHandle {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Deref)]
+#[derive(Debug)]
 pub(crate) struct EffectFnPtrSlot(Cell<NonNull<Entry<NonNull<dyn FnMut()>>>>);
 
 impl EffectFnPtrSlot {
     pub const fn new(inner: NonNull<Entry<NonNull<dyn FnMut()>>>) -> Self {
         Self(Cell::new(inner))
+    }
+}
+
+pub trait EffectFnPtrExt {
+    fn to_queue(&self) -> Option<&Entry<NonNull<dyn FnMut()>>>;
+}
+
+impl EffectFnPtrExt for Entry<EffectFnPtrSlot> {
+    fn to_queue(&self) -> Option<&Entry<NonNull<dyn FnMut()>>> {
+        if self.linked() {
+            // SAFETY: unless the entry is unlinked pointer is valid
+            Some(unsafe { self.value().0.get().as_ref() })
+        } else {
+            None
+        }
     }
 }

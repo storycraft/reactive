@@ -11,6 +11,7 @@ use scoped_tls_hkt::scoped_thread_local;
 
 use crate::list::{Entry, List};
 
+// TODO:: Use static fallback for single threaded no-std
 scoped_thread_local!(static QUEUE: for<'a> Pin<&'a Queue>);
 
 #[pin_project]
@@ -61,6 +62,7 @@ impl Queue {
                 entry.unlink();
 
                 let mut f = *entry.value();
+                // SAFETY: Due to constraint in EffectHandle::init, this is safe to deref mut 
                 (unsafe { f.as_mut() })();
             }
 
