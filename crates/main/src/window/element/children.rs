@@ -26,13 +26,13 @@ impl Children {
         self.project_ref().list
     }
 
-    pub async fn add(self: Pin<&Self>, element: Pin<&dyn Element>) {
+    pub async fn add(self: Pin<&Self>, element: Pin<&dyn Element>) -> ! {
         let node = pin!(Node::new(ElementKey {
             ptr: &*element as *const _ as *const _,
         }));
 
-        self.project_ref().list.push_front(node.into_ref().entry());
-        pending::<()>().await;
+        self.list().push_front(node.into_ref().entry());
+        pending().await
     }
 
     pub async fn run<'a, Fut: Future<Output = ()> + 'a>(
