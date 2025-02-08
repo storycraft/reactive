@@ -30,19 +30,19 @@ impl Queue {
         self.updates.is_empty()
     }
 
-    pub fn run(self: Pin<&Self>, waker: &Waker) {
-        let this = self.project_ref();
-
-        'a: {
-            if let Some(current) = self.waker.take() {
-                if current.will_wake(waker) {
-                    self.waker.set(Some(current));
-                    break 'a;
-                }
+    pub fn update_waker(&self, waker: &Waker) {
+        if let Some(current) = self.waker.take() {
+            if current.will_wake(waker) {
+                self.waker.set(Some(current));
+                return;
             }
-
-            self.waker.set(Some(waker.clone()));
         }
+
+        self.waker.set(Some(waker.clone()));
+    }
+
+    pub fn run(self: Pin<&Self>) {
+        let this = self.project_ref();
 
         while let Some(entry) = this.updates.iter().next() {
             entry.unlink();

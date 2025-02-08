@@ -38,11 +38,12 @@ where
             let cx = self.cx.as_ref();
             let queue = cx.queue();
             if !queue.is_empty() {
-                queue.run(&self.waker);
+                queue.run();
                 for handler in cx.handlers().iter() {
                     handler.value().with(|handler| handler.request_redraw());
                 }
             }
+            queue.update_waker(&self.waker);
         });
     }
 }
