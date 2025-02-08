@@ -12,12 +12,12 @@ use super::Element;
 
 #[derive(Debug)]
 #[pin_project]
-pub struct Children {
+pub struct Ui {
     #[pin]
     list: List<ElementKey>,
 }
 
-impl Children {
+impl Ui {
     pub fn new() -> Self {
         Self { list: List::new() }
     }
@@ -37,19 +37,19 @@ impl Children {
 
     pub async fn run<'a, Fut: Future<Output = ()> + 'a>(
         self: Pin<&'a Self>,
-        f: impl FnOnce(Pin<&'a Children>) -> Fut,
+        f: impl FnOnce(Pin<&'a Ui>) -> Fut,
     ) {
         f(self).await;
     }
 }
 
-impl Default for Children {
+impl Default for Ui {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Element for Children {
+impl Element for Ui {
     fn on_event(self: Pin<&Self>, el: &ActiveEventLoop, event: &mut WindowEvent) {
         for child in self.list().iter() {
             child.value().with(|child| {

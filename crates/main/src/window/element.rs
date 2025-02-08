@@ -1,4 +1,4 @@
-pub mod children;
+pub mod ui;
 
 use core::pin::Pin;
 

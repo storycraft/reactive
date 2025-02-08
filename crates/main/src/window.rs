@@ -9,7 +9,7 @@ use core::{
 };
 use std::ffi::CString;
 
-use element::{children::Children, Element};
+use element::{ui::Ui, Element};
 use gl::types::GLint;
 use glutin::{
     config::{Config, ConfigTemplateBuilder, GetGlConfig, GlConfig},
@@ -51,7 +51,7 @@ pub struct SkiaWindow {
     #[pin]
     window: StateRefCell<Option<Window>>,
     #[pin]
-    children: Children,
+    children: Ui,
 }
 
 impl SkiaWindow {
@@ -63,7 +63,7 @@ impl SkiaWindow {
             state: RefCell::new(WindowState::Uninit { builder }),
             attr,
             window: StateRefCell::new(None),
-            children: Children::new(),
+            children: Ui::new(),
         }
     }
 
@@ -73,7 +73,7 @@ impl SkiaWindow {
 
     pub async fn render<'a, Fut: Future<Output = ()> + 'a>(
         self: Pin<&'a Self>,
-        f: impl FnOnce(Pin<&'a Children>) -> Fut,
+        f: impl FnOnce(Pin<&'a Ui>) -> Fut,
     ) {
         HandlerKey::register(self, self.project_ref().children.run(f)).await;
     }

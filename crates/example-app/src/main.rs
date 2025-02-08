@@ -62,8 +62,8 @@ async fn async_main() {
         }
     });
 
-    main.render(|children| async move {
-        children.add(tracker).await;
+    main.render(|ui| async move {
+        ui.add(tracker).await;
     })
     .await;
 }
