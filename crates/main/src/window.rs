@@ -27,7 +27,7 @@ use skia_safe::{
         gl::{FramebufferInfo, Interface},
         DirectContext, SurfaceOrigin,
     },
-    Color, ColorType
+    Color, ColorType,
 };
 use winit::{
     event::{KeyEvent, WindowEvent},
