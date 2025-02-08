@@ -41,11 +41,11 @@ async fn async_main() {
     let resource = Resource::new();
     let_effect!(|| {
         let input = input.get($);
-        println!("Reloading resource, input: {input}");
+        println!("Reloading resource due to input changes, input: {input}");
 
         resource.load(async move {
-            sleep(Duration::from_secs(5)).await;
             // IO heavy task
+            sleep(Duration::from_secs(5)).await;
             input + 4
         });
     });
