@@ -1,29 +1,12 @@
-use core::{
-    future::{pending, Future},
-    pin::Pin,
-};
+pub mod children;
 
-use never_say_never::Never;
+use core::pin::Pin;
+
 use skia_safe::Canvas;
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 
-pub trait Element<'a> {
-    fn setup(self: Pin<&'a Self>) -> impl Future<Output = Never> + 'a
-    where
-        Self: Sized,
-    {
-        pending()
-    }
-
-    fn on_event(
-        self: Pin<&Self>,
-        _el: &ActiveEventLoop,
-        _window_id: WindowId,
-        _event: &mut WindowEvent,
-    ) {
-    }
+pub trait Element {
+    fn on_event(self: Pin<&Self>, _el: &ActiveEventLoop, _event: &mut WindowEvent) {}
 
     fn draw(self: Pin<&Self>, _canvas: &Canvas) {}
 }
-
-impl Element<'_> for () {}

@@ -13,7 +13,7 @@ use reactive::{
 use reactivity::let_effect;
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 
 #[tokio::main]
 async fn main() {
@@ -21,6 +21,9 @@ async fn main() {
 }
 
 async fn async_main() {
+    let main = pin!(SkiaWindow::new());
+    let main = main.into_ref();
+
     let tracker = pin!(MouseTracker::new());
     let tracker = tracker.into_ref();
 
@@ -53,13 +56,16 @@ async fn async_main() {
         println!("mouse position updated to x: {x} y: {y}");
     });
 
-    // let_effect!(|| {
-    //     if let Some(window) = &*window.get($) {
-    //         println!("registered {:?}", window);
-    //     }
-    // });
+    let_effect!(|| {
+        if let Some(window) = &*main.window().get($) {
+            println!("window loaded {:?}", window);
+        }
+    });
 
-    SkiaWindow::render(|window| tracker).await;
+    main.render(|children| async move {
+        children.add(tracker).await;
+    })
+    .await;
 }
 
 #[derive(Debug)]
@@ -94,13 +100,8 @@ impl MouseTracker {
     }
 }
 
-impl Element<'_> for MouseTracker {
-    fn on_event(
-        self: Pin<&Self>,
-        _el: &ActiveEventLoop,
-        _window_id: WindowId,
-        event: &mut WindowEvent,
-    ) {
+impl Element for MouseTracker {
+    fn on_event(self: Pin<&Self>, _el: &ActiveEventLoop, event: &mut WindowEvent) {
         if let WindowEvent::CursorMoved { position, .. } = event {
             let this = self.project_ref();
             this.x.set(position.x);

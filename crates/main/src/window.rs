@@ -3,12 +3,13 @@ pub mod element;
 use core::{
     cell::RefCell,
     ffi::CStr,
+    future::Future,
     num::NonZeroU32,
     pin::{pin, Pin},
 };
 use std::ffi::CString;
 
-use element::Element;
+use element::{children::Children, Element};
 use gl::types::GLint;
 use glutin::{
     config::{Config, ConfigTemplateBuilder, GetGlConfig, GlConfig},
@@ -44,55 +45,47 @@ use crate::{
 
 #[derive(Debug)]
 #[pin_project]
-pub struct SkiaWindow<'a, Root> {
+pub struct SkiaWindow {
     attr: WindowAttributes,
     state: RefCell<WindowState>,
-    window: Pin<&'a StateRefCell<Option<Window>>>,
-    root: Pin<&'a Root>,
+    #[pin]
+    window: StateRefCell<Option<Window>>,
+    #[pin]
+    children: Children,
 }
 
-impl<'a, Root> SkiaWindow<'a, Root>
-where
-    Root: for<'b> Element<'b>,
-{
-    fn new(
-        builder: DisplayBuilder,
-        attr: WindowAttributes,
-        window: Pin<&'a StateRefCell<Option<Window>>>,
-        root: Pin<&'a Root>,
-    ) -> Self {
+impl SkiaWindow {
+    pub fn new() -> Self {
+        let attr = WindowAttributes::default();
+        let builder = DisplayBuilder::new().with_window_attributes(Some(attr.clone()));
+
         Self {
-            state: RefCell::new(WindowState::Uninit {
-                builder: builder.with_window_attributes(Some(attr.clone())),
-            }),
+            state: RefCell::new(WindowState::Uninit { builder }),
             attr,
-            window,
-            root,
+            window: StateRefCell::new(None),
+            children: Children::new(),
         }
     }
 
-    pub async fn render(f: impl FnOnce(Pin<&StateRefCell<Option<Window>>>) -> Pin<&'a Root>) {
-        let window = pin!(StateRefCell::new(None));
-        let window = window.into_ref();
+    pub fn window(self: Pin<&Self>) -> Pin<&StateRefCell<Option<Window>>> {
+        self.project_ref().window
+    }
 
-        let root = f(window);
-
-        let this = pin!(SkiaWindow::new(
-            DisplayBuilder::new(),
-            WindowAttributes::default(),
-            window,
-            root
-        ));
-        let this = this.into_ref();
-
-        HandlerKey::register(this, async move {
-            root.setup().await;
-        })
-        .await;
+    pub async fn render<'a, Fut: Future<Output = ()> + 'a>(
+        self: Pin<&'a Self>,
+        f: impl FnOnce(Pin<&'a Children>) -> Fut,
+    ) {
+        HandlerKey::register(self, self.project_ref().children.run(f)).await;
     }
 }
 
-impl<Root: for<'a> Element<'a>> EventHandler for SkiaWindow<'_, Root> {
+impl Default for SkiaWindow {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EventHandler for SkiaWindow {
     fn request_redraw(self: Pin<&Self>) {
         if let Some(window) = &*self.project_ref().window.get_untracked() {
             window.request_redraw();
@@ -182,14 +175,14 @@ impl<Root: for<'a> Element<'a>> EventHandler for SkiaWindow<'_, Root> {
                     },
                 ..
             } => {
-                el.exit();
+                this.window.set(None);
             }
 
             WindowEvent::RedrawRequested => {
                 let canvas = skia_surface.canvas();
                 canvas.clear(Color::BLACK);
 
-                this.root.draw(canvas);
+                this.children.draw(canvas);
 
                 gr_cx.flush_and_submit();
                 gl_surface.swap_buffers(gl_cx).unwrap();
@@ -198,7 +191,7 @@ impl<Root: for<'a> Element<'a>> EventHandler for SkiaWindow<'_, Root> {
             _ => {}
         }
 
-        this.root.on_event(el, window_id, event);
+        this.children.on_event(el, event);
     }
 }
 
