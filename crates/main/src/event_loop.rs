@@ -33,11 +33,11 @@ where
 {
     fn poll(&mut self) {
         AppCx::set(&self.cx, || {
-            self.cx.as_ref().queue().run(&self.waker);
             let _ = self
                 .fut
                 .as_mut()
                 .poll(&mut Context::from_waker(&self.waker));
+            self.cx.as_ref().queue().run(&self.waker);
         });
     }
 }
