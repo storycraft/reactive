@@ -1,4 +1,4 @@
-use core::{marker::PhantomData, pin::Pin};
+use core::marker::PhantomData;
 
 use super::{Entry, EntryPtr, List};
 
@@ -31,8 +31,7 @@ impl<'a, T: ?Sized> IntoIterator for &'a List<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         Iter {
-            // SAFETY: start is always unique and None if self is not pinned
-            next: unsafe { Pin::new_unchecked(&self.start) }.get().get(),
+            next: self.start(),
             _ph: PhantomData,
         }
     }

@@ -26,6 +26,15 @@ impl<T: ?Sized> List<T> {
         }
     }
 
+    fn start(&self) -> Option<EntryPtr<T>> {
+        // SAFETY: start is always unique and None if self is not pinned
+        unsafe { Pin::new_unchecked(&self.start) }.get().get()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.start().is_none()
+    }
+
     pub fn push_front(self: Pin<&Self>, entry: &Entry<T>) {
         let start = self.project_ref().start.get();
         entry.unlink();

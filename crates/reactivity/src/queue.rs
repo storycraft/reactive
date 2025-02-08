@@ -43,6 +43,10 @@ impl Queue {
         *current = Some(waker.clone());
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.updates.is_empty()
+    }
+
     pub fn run(self: Pin<&Self>, waker: &Waker) {
         let this = self.project_ref();
 
@@ -57,8 +61,7 @@ impl Queue {
             this.waker.set(Some(waker.clone()));
         }
 
-        let updates = this.updates;
-        while let Some(entry) = updates.iter().next() {
+        while let Some(entry) = this.updates.iter().next() {
             entry.unlink();
             entry.value().call();
         }
