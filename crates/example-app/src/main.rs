@@ -1,41 +1,70 @@
-use core::pin::{pin, Pin};
+use core::{
+    pin::{pin, Pin},
+    time::Duration,
+};
 
 use futures::future::join;
 use glutin_winit::DisplayBuilder;
 use pin_project::pin_project;
-use reactive::{render, run, window::SkiaWindow, Component, state::StateCell};
+use reactive::{render, resource::Resource, run, state::StateCell, window::SkiaWindow, Component};
 use reactivity::let_effect;
+use tokio::time::sleep;
 use winit::{
     event::WindowEvent,
     event_loop::ActiveEventLoop,
     window::{WindowAttributes, WindowId},
 };
 
-fn main() {
-    run(async {
-        let window = pin!(SkiaWindow::new(
-            DisplayBuilder::new(),
-            WindowAttributes::default()
-        ));
-        let window = window.into_ref();
-        let tracker = pin!(MouseTracker::new());
-        let tracker = tracker.into_ref();
+#[tokio::main]
+async fn main() {
+    run(async_main());
+}
 
-        let_effect!(|| {
-            if let Some(window) = &*window.window().get($) {
-                println!("registered {:?}", window);
-            }
-        });
+async fn async_main() {
+    let window = pin!(SkiaWindow::new(
+        DisplayBuilder::new(),
+        WindowAttributes::default()
+    ));
+    let window = window.into_ref();
+    let tracker = pin!(MouseTracker::new());
+    let tracker = tracker.into_ref();
 
-        let_effect!(|| {
-            let x = tracker.x().get($);
-            let y = tracker.y().get($);
+    let input = pin!(StateCell::new(0));
+    let input = input.into_ref();
 
-            println!("mouse position updated to x: {x} y: {y}");
-        });
-
-        join(render(window), render(tracker)).await;
+    let_effect!(|| {
+        if let Some(window) = &*window.window().get($) {
+            println!("registered {:?}", window);
+        }
     });
+
+    let resource = Resource::new();
+    let_effect!(|| {
+        let input = input.get($);
+        println!("Reloading resource, input: {input}");
+
+        resource.load(async move {
+            sleep(Duration::from_secs(5)).await;
+            // IO heavy task
+            input + 4
+        });
+    });
+
+    let_effect!(|| {
+        if let Some(value) = resource.get($) {
+            println!("Resource loaded, value: {value}");
+            input.set(value + 3);
+        }
+    });
+
+    let_effect!(|| {
+        let x = tracker.x().get($);
+        let y = tracker.y().get($);
+
+        println!("mouse position updated to x: {x} y: {y}");
+    });
+
+    join(render(window), render(tracker)).await;
 }
 
 #[derive(Debug)]
