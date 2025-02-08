@@ -1,6 +1,14 @@
-use core::{cell::RefCell, ffi::CStr, num::NonZeroU32, pin::Pin};
+pub mod element;
+
+use core::{
+    cell::RefCell,
+    ffi::CStr,
+    num::NonZeroU32,
+    pin::{pin, Pin},
+};
 use std::ffi::CString;
 
+use element::Element;
 use gl::types::GLint;
 use glutin::{
     config::{Config, ConfigTemplateBuilder, GetGlConfig, GlConfig},
@@ -19,7 +27,7 @@ use skia_safe::{
         gl::{FramebufferInfo, Interface},
         DirectContext, SurfaceOrigin,
     },
-    Color, Color4f, ColorType, Paint, PaintStyle, Rect,
+    Color, ColorType
 };
 use winit::{
     event::{KeyEvent, WindowEvent},
@@ -29,40 +37,74 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-use crate::{state::StateRefCell, Component};
+use crate::{
+    event_loop::handler::{EventHandler, HandlerKey},
+    state::StateRefCell,
+};
 
 #[derive(Debug)]
 #[pin_project]
-pub struct SkiaWindow {
+pub struct SkiaWindow<'a, Root> {
     attr: WindowAttributes,
-    state: RefCell<GlState>,
-    #[pin]
-    window: StateRefCell<Option<Window>>,
+    state: RefCell<WindowState>,
+    window: Pin<&'a StateRefCell<Option<Window>>>,
+    root: Pin<&'a Root>,
 }
 
-impl SkiaWindow {
-    pub fn new(builder: DisplayBuilder, attr: WindowAttributes) -> Self {
+impl<'a, Root> SkiaWindow<'a, Root>
+where
+    Root: for<'b> Element<'b>,
+{
+    fn new(
+        builder: DisplayBuilder,
+        attr: WindowAttributes,
+        window: Pin<&'a StateRefCell<Option<Window>>>,
+        root: Pin<&'a Root>,
+    ) -> Self {
         Self {
-            state: RefCell::new(GlState::Uninit {
+            state: RefCell::new(WindowState::Uninit {
                 builder: builder.with_window_attributes(Some(attr.clone())),
             }),
             attr,
-            window: StateRefCell::new(None),
+            window,
+            root,
         }
     }
 
-    pub fn window(self: Pin<&Self>) -> Pin<&StateRefCell<Option<Window>>> {
-        self.project_ref().window
+    pub async fn render(f: impl FnOnce(Pin<&StateRefCell<Option<Window>>>) -> Pin<&'a Root>) {
+        let window = pin!(StateRefCell::new(None));
+        let window = window.into_ref();
+
+        let root = f(window);
+
+        let this = pin!(SkiaWindow::new(
+            DisplayBuilder::new(),
+            WindowAttributes::default(),
+            window,
+            root
+        ));
+        let this = this.into_ref();
+
+        HandlerKey::register(this, async move {
+            root.setup().await;
+        })
+        .await;
     }
 }
 
-impl Component<'_> for SkiaWindow {
+impl<Root: for<'a> Element<'a>> EventHandler for SkiaWindow<'_, Root> {
+    fn request_redraw(self: Pin<&Self>) {
+        if let Some(window) = &*self.project_ref().window.get_untracked() {
+            window.request_redraw();
+        }
+    }
+
     fn resumed(self: Pin<&Self>, el: &ActiveEventLoop) {
         let this = self.project_ref();
 
         // TODO:: error handling
-        let Some((window, cx)) = (match this.state.replace(GlState::Invalid) {
-            GlState::Invalid => {
+        let Some((window, cx)) = (match this.state.replace(WindowState::Invalid) {
+            WindowState::Invalid => {
                 println!("GlState is invalid");
                 el.exit();
                 return;
@@ -76,8 +118,8 @@ impl Component<'_> for SkiaWindow {
             return;
         };
 
-        this.state.replace(GlState::Init(cx));
-        self.window().set(Some(window));
+        this.state.replace(WindowState::Init(cx));
+        this.window.set(Some(window));
     }
 
     fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
@@ -85,7 +127,7 @@ impl Component<'_> for SkiaWindow {
         this.window.set(None);
 
         this.state
-            .replace(this.state.replace(GlState::Invalid).suspend());
+            .replace(this.state.replace(WindowState::Invalid).suspend());
     }
 
     fn on_window_event(
@@ -96,14 +138,8 @@ impl Component<'_> for SkiaWindow {
     ) {
         let this = self.project_ref();
 
-        let Some(window) = &*this.window.get_untracked() else {
-            return;
-        };
-        if window.id() != window_id {
-            return;
-        }
-
-        let GlState::Init(Context {
+        let WindowState::Init(Context {
+            id,
             gl_cx,
             gr_cx,
             stencil_size,
@@ -116,6 +152,10 @@ impl Component<'_> for SkiaWindow {
         else {
             return;
         };
+
+        if *id != window_id {
+            return;
+        }
 
         match event {
             WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
@@ -147,11 +187,9 @@ impl Component<'_> for SkiaWindow {
 
             WindowEvent::RedrawRequested => {
                 let canvas = skia_surface.canvas();
-                canvas.clear(Color::WHITE);
+                canvas.clear(Color::BLACK);
 
-                let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
-                paint.set_style(PaintStyle::Fill);
-                canvas.draw_rect(Rect::new(50.0, 50.0, 200.0, 200.0), &paint);
+                this.root.draw(canvas);
 
                 gr_cx.flush_and_submit();
                 gl_surface.swap_buffers(gl_cx).unwrap();
@@ -159,11 +197,14 @@ impl Component<'_> for SkiaWindow {
 
             _ => {}
         }
+
+        this.root.on_event(el, window_id, event);
     }
 }
 
 #[derive(Debug)]
 struct Context {
+    id: WindowId,
     gl_cx: PossiblyCurrentContext,
     gr_cx: DirectContext,
 
@@ -176,18 +217,18 @@ struct Context {
 }
 
 #[derive(Debug)]
-enum GlState {
+enum WindowState {
     Uninit { builder: DisplayBuilder },
     Init(Context),
     Suspended { cx: NotCurrentContext },
     Invalid,
 }
 
-impl GlState {
+impl WindowState {
     // TODO:: error handling
     pub fn resume(self, el: &ActiveEventLoop, attr: WindowAttributes) -> Option<(Window, Context)> {
         let (window, gl_config, gl_cx) = match self {
-            GlState::Uninit { builder } => {
+            WindowState::Uninit { builder } => {
                 let template = ConfigTemplateBuilder::new().with_alpha_size(8);
 
                 let Ok((Some(window), gl_config)) = builder.build(el, template, gl_config_picker)
@@ -201,7 +242,7 @@ impl GlState {
                 (window, gl_config, gl_cx)
             }
 
-            GlState::Suspended { cx } => {
+            WindowState::Suspended { cx } => {
                 println!("Recreating window in `resumed`");
                 // Pick the config which we already use for the context.
                 let gl_config = cx.config();
@@ -285,9 +326,11 @@ impl GlState {
                 .to_string_lossy()
         );
 
+        let id = window.id();
         Some((
             window,
             Context {
+                id,
                 gl_cx,
                 gr_cx,
                 num_samples,
@@ -300,8 +343,8 @@ impl GlState {
     }
 
     pub fn suspend(self) -> Self {
-        if let GlState::Init(cx) = self {
-            GlState::Suspended {
+        if let WindowState::Init(cx) = self {
+            WindowState::Suspended {
                 cx: cx.gl_cx.make_not_current().unwrap(),
             }
         } else {

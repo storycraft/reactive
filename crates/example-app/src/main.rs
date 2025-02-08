@@ -3,17 +3,17 @@ use core::{
     time::Duration,
 };
 
-use futures::future::join;
-use glutin_winit::DisplayBuilder;
 use pin_project::pin_project;
-use reactive::{render, resource::Resource, run, state::StateCell, window::SkiaWindow, Component};
-use reactivity::let_effect;
-use tokio::time::sleep;
-use winit::{
-    event::WindowEvent,
-    event_loop::ActiveEventLoop,
-    window::{WindowAttributes, WindowId},
+use reactive::{
+    resource::Resource,
+    run,
+    state::StateCell,
+    window::{element::Element, SkiaWindow},
 };
+use reactivity::let_effect;
+use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
+use tokio::time::sleep;
+use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
 
 #[tokio::main]
 async fn main() {
@@ -21,22 +21,11 @@ async fn main() {
 }
 
 async fn async_main() {
-    let window = pin!(SkiaWindow::new(
-        DisplayBuilder::new(),
-        WindowAttributes::default()
-    ));
-    let window = window.into_ref();
     let tracker = pin!(MouseTracker::new());
     let tracker = tracker.into_ref();
 
     let input = pin!(StateCell::new(0));
     let input = input.into_ref();
-
-    let_effect!(|| {
-        if let Some(window) = &*window.window().get($) {
-            println!("registered {:?}", window);
-        }
-    });
 
     let resource = Resource::new();
     let_effect!(|| {
@@ -64,7 +53,13 @@ async fn async_main() {
         println!("mouse position updated to x: {x} y: {y}");
     });
 
-    join(render(window), render(tracker)).await;
+    // let_effect!(|| {
+    //     if let Some(window) = &*window.get($) {
+    //         println!("registered {:?}", window);
+    //     }
+    // });
+
+    SkiaWindow::render(|window| tracker).await;
 }
 
 #[derive(Debug)]
@@ -99,8 +94,8 @@ impl MouseTracker {
     }
 }
 
-impl Component<'_> for MouseTracker {
-    fn on_window_event(
+impl Element<'_> for MouseTracker {
+    fn on_event(
         self: Pin<&Self>,
         _el: &ActiveEventLoop,
         _window_id: WindowId,
@@ -111,5 +106,15 @@ impl Component<'_> for MouseTracker {
             this.x.set(position.x);
             this.y.set(position.y);
         }
+    }
+
+    fn draw(self: Pin<&Self>, canvas: &Canvas) {
+        let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
+        paint.set_style(PaintStyle::Fill);
+
+        let x = self.x().get_untracked() as f32;
+        let y = self.y().get_untracked() as f32;
+
+        canvas.draw_rect(Rect::new(x, y, x + 50.0, y + 50.0), &paint);
     }
 }

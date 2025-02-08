@@ -1,4 +1,4 @@
-use core::pin::Pin;
+use core::{pin::Pin, task::Waker};
 use std::rc::Rc;
 
 use async_executor::LocalExecutor;
@@ -6,7 +6,7 @@ use pin_project::pin_project;
 use reactivity::{list::List, queue::Queue};
 use scoped_tls_hkt::scoped_thread_local;
 
-use super::components::ComponentKey;
+use super::handler::HandlerKey;
 
 scoped_thread_local!(static CX: Pin<Rc<AppCx>>);
 
@@ -14,17 +14,17 @@ scoped_thread_local!(static CX: Pin<Rc<AppCx>>);
 pub struct AppCx {
     executor: LocalExecutor<'static>,
     #[pin]
-    components: List<ComponentKey>,
+    handlers: List<HandlerKey>,
     #[pin]
     queue: Queue,
 }
 
 impl AppCx {
-    pub fn new() -> Self {
+    pub fn new(waker: Option<Waker>) -> Self {
         Self {
             executor: LocalExecutor::new(),
-            components: List::new(),
-            queue: Queue::new(),
+            handlers: List::new(),
+            queue: Queue::new(waker),
         }
     }
 
@@ -32,8 +32,8 @@ impl AppCx {
         &self.executor
     }
 
-    pub fn components(self: Pin<&Self>) -> Pin<&List<ComponentKey>> {
-        self.project_ref().components
+    pub fn handlers(self: Pin<&Self>) -> Pin<&List<HandlerKey>> {
+        self.project_ref().handlers
     }
 
     pub fn queue(self: Pin<&Self>) -> Pin<&Queue> {

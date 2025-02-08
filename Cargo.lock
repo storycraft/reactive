@@ -458,6 +458,7 @@ dependencies = [
  "pin-project",
  "reactive",
  "reactivity",
+ "skia-safe",
  "tokio",
  "winit",
 ]

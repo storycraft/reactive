@@ -18,29 +18,12 @@ pub struct Queue {
     updates: List<EffectFn>,
 }
 
-impl Default for Queue {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Queue {
-    pub fn new() -> Self {
+    pub fn new(waker: Option<Waker>) -> Self {
         Self {
-            waker: Cell::new(None),
+            waker: Cell::new(waker),
             updates: List::new(),
         }
-    }
-
-    pub fn update_waker(mut self: Pin<&mut Self>, waker: &Waker) {
-        let current = self.as_mut().project().waker.get_mut();
-        if let Some(current) = current {
-            if current.will_wake(waker) {
-                return;
-            }
-        }
-
-        *current = Some(waker.clone());
     }
 
     pub fn is_empty(&self) -> bool {
@@ -51,14 +34,14 @@ impl Queue {
         let this = self.project_ref();
 
         'a: {
-            if let Some(current) = this.waker.take() {
+            if let Some(current) = self.waker.take() {
                 if current.will_wake(waker) {
-                    this.waker.set(Some(current));
+                    self.waker.set(Some(current));
                     break 'a;
                 }
             }
 
-            this.waker.set(Some(waker.clone()));
+            self.waker.set(Some(waker.clone()));
         }
 
         while let Some(entry) = this.updates.iter().next() {

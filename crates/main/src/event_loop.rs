@@ -1,5 +1,5 @@
-pub(crate) mod components;
 pub mod context;
+pub mod handler;
 
 use core::{
     future::{pending, Future},
@@ -8,7 +8,6 @@ use core::{
 };
 use std::rc::Rc;
 
-use components::ComponentKey;
 use context::AppCx;
 use never_say_never::Never;
 use waker_fn::waker_fn;
@@ -18,8 +17,6 @@ use winit::{
     event_loop::{ActiveEventLoop, EventLoop},
     window::WindowId,
 };
-
-use crate::Component;
 
 struct App<'a, Fut> {
     waker: Waker,
@@ -37,7 +34,15 @@ where
                 .fut
                 .as_mut()
                 .poll(&mut Context::from_waker(&self.waker));
-            self.cx.as_ref().queue().run(&self.waker);
+
+            let cx = self.cx.as_ref();
+            let queue = cx.queue();
+            if !queue.is_empty() {
+                queue.run(&self.waker);
+                for handler in cx.handlers().iter() {
+                    handler.value().with(|handler| handler.request_redraw());
+                }
+            }
         });
     }
 }
@@ -48,26 +53,26 @@ where
 {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         AppCx::set(&self.cx, || {
-            for entry in self.cx.as_ref().components().iter() {
-                entry.value().with(|component| component.resumed(el));
+            for entry in self.cx.as_ref().handlers().iter() {
+                entry.value().with(|handler| handler.resumed(el));
             }
         });
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
         AppCx::set(&self.cx, || {
-            for entry in self.cx.as_ref().components().iter() {
+            for entry in self.cx.as_ref().handlers().iter() {
                 entry
                     .value()
-                    .with(|component| component.on_window_event(el, window_id, &mut event));
+                    .with(|handler| handler.on_window_event(el, window_id, &mut event));
             }
         });
     }
 
     fn suspended(&mut self, el: &ActiveEventLoop) {
         AppCx::set(&self.cx, || {
-            for entry in self.cx.as_ref().components().iter() {
-                entry.value().with(|component| component.suspended(el));
+            for entry in self.cx.as_ref().handlers().iter() {
+                entry.value().with(|handler| handler.suspended(el));
             }
         });
     }
@@ -75,10 +80,6 @@ where
     fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
         self.poll();
     }
-}
-
-pub async fn render<T: for<'a> Component<'a>>(component: Pin<&T>) -> ! {
-    ComponentKey::register(component).await
 }
 
 pub fn run<Fut: Future>(fut: Fut) {
@@ -92,8 +93,7 @@ pub fn run<Fut: Future>(fut: Fut) {
         }
     });
 
-    let cx = Rc::pin(AppCx::new());
-
+    let cx = Rc::pin(AppCx::new(Some(waker.clone())));
     let fut = pin!({
         let cx = cx.clone();
         async move {
