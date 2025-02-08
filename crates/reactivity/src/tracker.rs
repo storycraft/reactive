@@ -29,21 +29,19 @@ impl DependencyTracker {
             .push_front(binding.to_tracker());
     }
 
-    pub fn notify(self: Pin<&Self>) {
-        Queue::with(|queue| {
-            self.project_ref().dependents.take(|dependents| {
-                for dependent in dependents.iter() {
-                    let handle_entry = dependent.value_pinned().to_handle();
+    pub fn notify(self: Pin<&Self>, queue: Pin<&Queue>) {
+        self.project_ref().dependents.take(|dependents| {
+            for dependent in dependents.iter() {
+                let handle_entry = dependent.value_pinned().to_handle();
 
-                    if let Some(queue_entry) = handle_entry.to_queue() {
-                        if !queue_entry.linked() {
-                            queue.add(queue_entry);
-                        }
-                    } else {
-                        continue;
+                if let Some(queue_entry) = handle_entry.to_queue() {
+                    if !queue_entry.linked() {
+                        queue.add(queue_entry);
                     }
+                } else {
+                    continue;
                 }
-            });
+            }
         });
     }
 }

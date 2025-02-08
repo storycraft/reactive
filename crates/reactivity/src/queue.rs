@@ -1,20 +1,15 @@
 use core::{
     cell::Cell,
-    future::Future,
     pin::{pin, Pin},
-    task::{Context, Poll, Waker},
+    task::Waker,
 };
 
 use pin_project::pin_project;
-use scoped_tls_hkt::scoped_thread_local;
 
 use crate::{
     effect::handle::EffectFn,
     list::{Entry, List},
 };
-
-// TODO:: Use static fallback for single threaded no-std
-scoped_thread_local!(static QUEUE: for<'a> Pin<&'a Queue>);
 
 #[pin_project]
 pub struct Queue {
@@ -37,48 +32,42 @@ impl Queue {
         }
     }
 
-    pub fn set<R>(self: Pin<&Self>, f: impl FnOnce() -> R) -> R {
-        QUEUE.set(self, f)
+    pub fn update_waker(mut self: Pin<&mut Self>, waker: &Waker) {
+        let current = self.as_mut().project().waker.get_mut();
+        if let Some(current) = current {
+            if current.will_wake(waker) {
+                return;
+            }
+        }
+
+        *current = Some(waker.clone());
     }
 
-    pub fn poll<F: Future>(
-        mut self: Pin<&mut Self>,
-        fut: Pin<&mut F>,
-        cx: &mut Context,
-    ) -> Poll<F::Output> {
+    pub fn run(self: Pin<&Self>, waker: &Waker) {
+        let this = self.project_ref();
+
         'a: {
-            let waker = self.as_mut().project().waker.get_mut();
-            if let Some(waker) = waker {
-                if waker.will_wake(cx.waker()) {
+            if let Some(current) = this.waker.take() {
+                if current.will_wake(waker) {
+                    this.waker.set(Some(current));
                     break 'a;
                 }
             }
 
-            *waker = Some(cx.waker().clone());
+            this.waker.set(Some(waker.clone()));
         }
 
-        let queue = self.into_ref();
-        queue.set(move || {
-            let updates = queue.project_ref().updates;
-            while let Some(entry) = updates.iter().next() {
-                entry.unlink();
-                entry.value().call();
-            }
-
-            fut.poll(cx)
-        })
+        let updates = this.updates;
+        while let Some(entry) = updates.iter().next() {
+            entry.unlink();
+            entry.value().call();
+        }
     }
 
     pub(crate) fn add(self: Pin<&Self>, entry: &Entry<EffectFn>) {
         self.project_ref().updates.push_front(entry);
         if let Some(waker) = self.waker.take() {
             waker.wake();
-        }
-    }
-
-    pub(crate) fn with(f: impl FnOnce(Pin<&Self>)) {
-        if QUEUE.is_set() {
-            QUEUE.with(f)
         }
     }
 }
