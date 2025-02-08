@@ -13,7 +13,6 @@ use glutin::{
 };
 use glutin_winit::{finalize_window, DisplayBuilder, GlWindow};
 use pin_project::pin_project;
-use reactivity::state::StateRefCell;
 use skia_safe::{
     gpu::{
         self, backend_render_targets,
@@ -30,7 +29,7 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-use crate::Component;
+use crate::{state::StateRefCell, Component};
 
 #[derive(Debug)]
 #[pin_project]

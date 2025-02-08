@@ -1,11 +1,10 @@
 use core::pin::{pin, Pin};
 
-use reactivity::list::{List, Node};
-use scoped_tls_hkt::scoped_thread_local;
+use reactivity::list::Node;
 
 use crate::Component;
 
-scoped_thread_local!(static COMPONENTS: for<'a> Pin<&'a List<ComponentKey>>);
+use super::context::AppCx;
 
 pub struct ComponentKey {
     ptr: *const dyn for<'a> Component<'a>,
@@ -25,16 +24,12 @@ impl ComponentKey {
             ptr: &*component as *const _ as *const _,
         }));
 
-        if COMPONENTS.is_set() {
-            COMPONENTS.with(|list| {
-                list.push_front(node.into_ref().entry());
+        if AppCx::is_set() {
+            AppCx::with(|cx| {
+                cx.as_ref().components().push_front(node.into_ref().entry());
             })
         }
 
         component.setup().await
-    }
-
-    pub fn set<R>(list: Pin<&List<ComponentKey>>, f: impl FnOnce() -> R) -> R {
-        COMPONENTS.set(list, f)
     }
 }

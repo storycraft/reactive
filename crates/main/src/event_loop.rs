@@ -1,14 +1,16 @@
 pub(crate) mod components;
+pub mod context;
 
 use core::{
     future::{pending, Future},
     pin::{pin, Pin},
     task::{Context, Waker},
 };
+use std::rc::Rc;
 
 use components::ComponentKey;
+use context::AppCx;
 use never_say_never::Never;
-use reactivity::{list::List, queue::Queue};
 use waker_fn::waker_fn;
 use winit::{
     application::ApplicationHandler,
@@ -19,42 +21,42 @@ use winit::{
 
 use crate::Component;
 
-struct WinitApp<'a, Fut> {
+struct App<'a, Fut> {
     waker: Waker,
-    queue: Pin<&'a mut Queue>,
-    components: Pin<&'a List<ComponentKey>>,
+    cx: Pin<Rc<AppCx>>,
     fut: Pin<&'a mut Fut>,
 }
 
-impl<Fut> WinitApp<'_, Fut>
+impl<Fut> App<'_, Fut>
 where
     Fut: Future<Output = Never>,
 {
     fn poll(&mut self) {
-        ComponentKey::set(self.components.as_ref(), || {
+        AppCx::set(&self.cx, || {
+            self.cx.as_ref().queue().run(&self.waker);
             let _ = self
-                .queue
+                .fut
                 .as_mut()
-                .poll(self.fut.as_mut(), &mut Context::from_waker(&self.waker));
+                .poll(&mut Context::from_waker(&self.waker));
         });
     }
 }
 
-impl<Fut> ApplicationHandler for WinitApp<'_, Fut>
+impl<Fut> ApplicationHandler for App<'_, Fut>
 where
     Fut: Future<Output = Never>,
 {
     fn resumed(&mut self, el: &ActiveEventLoop) {
-        self.queue.as_ref().set(|| {
-            for entry in self.components.iter() {
+        AppCx::set(&self.cx, || {
+            for entry in self.cx.as_ref().components().iter() {
                 entry.value().with(|component| component.resumed(el));
             }
         });
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
-        self.queue.as_ref().set(|| {
-            for entry in self.components.iter() {
+        AppCx::set(&self.cx, || {
+            for entry in self.cx.as_ref().components().iter() {
                 entry
                     .value()
                     .with(|component| component.on_window_event(el, window_id, &mut event));
@@ -63,8 +65,8 @@ where
     }
 
     fn suspended(&mut self, el: &ActiveEventLoop) {
-        self.queue.as_ref().set(|| {
-            for entry in self.components.iter() {
+        AppCx::set(&self.cx, || {
+            for entry in self.cx.as_ref().components().iter() {
                 entry.value().with(|component| component.suspended(el));
             }
         });
@@ -90,18 +92,17 @@ pub fn run<Fut: Future>(fut: Fut) {
         }
     });
 
-    let components = pin!(List::new());
-    let components = components.into_ref();
+    let cx = Rc::pin(AppCx::new());
 
-    let mut app = WinitApp {
-        waker,
-        queue: pin!(Queue::new()),
-        components,
-        fut: pin!(async {
-            fut.await;
+    let fut = pin!({
+        let cx = cx.clone();
+        async move {
+            cx.executor().run(fut).await;
             pending().await
-        }),
-    };
+        }
+    });
+
+    let mut app = App { cx, waker, fut };
     app.poll();
 
     // TODO:: error handling

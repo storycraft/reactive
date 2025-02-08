@@ -3,8 +3,8 @@ use core::pin::{pin, Pin};
 use futures::future::join;
 use glutin_winit::DisplayBuilder;
 use pin_project::pin_project;
-use reactive::{render, run, window::SkiaWindow, Component};
-use reactivity::{let_effect, state::StateCell};
+use reactive::{render, run, window::SkiaWindow, Component, state::StateCell};
+use reactivity::let_effect;
 use winit::{
     event::WindowEvent,
     event_loop::ActiveEventLoop,

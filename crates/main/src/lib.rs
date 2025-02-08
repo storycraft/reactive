@@ -2,6 +2,8 @@ pub mod children;
 pub mod element;
 pub mod event;
 mod event_loop;
+pub mod resource;
+pub mod state;
 pub mod window;
 
 use children::NoChild;
