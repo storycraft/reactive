@@ -38,3 +38,9 @@ impl<T> Resource<T> {
         self.state.as_ref().take_get(binding)
     }
 }
+
+impl<T> Default for Resource<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

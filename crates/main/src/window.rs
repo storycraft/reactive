@@ -61,15 +61,138 @@ impl Component<'_> for SkiaWindow {
         let this = self.project_ref();
 
         // TODO:: error handling
-        let (window, gl_config, gl_cx) = match this.state.replace(GlState::Invalid) {
+        let Some((window, cx)) = (match this.state.replace(GlState::Invalid) {
+            GlState::Invalid => {
+                println!("GlState is invalid");
+                el.exit();
+                return;
+            }
+
+            state => state.resume(el, self.attr.clone()),
+        }) else {
+            println!("Window creation failed");
+            el.exit();
+
+            return;
+        };
+
+        this.state.replace(GlState::Init(cx));
+        self.window().set(Some(window));
+    }
+
+    fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
+        let this = self.project_ref();
+        this.window.set(None);
+
+        this.state
+            .replace(this.state.replace(GlState::Invalid).suspend());
+    }
+
+    fn on_window_event(
+        self: Pin<&Self>,
+        el: &ActiveEventLoop,
+        window_id: WindowId,
+        event: &mut WindowEvent,
+    ) {
+        let this = self.project_ref();
+
+        let Some(window) = &*this.window.get_untracked() else {
+            return;
+        };
+        if window.id() != window_id {
+            return;
+        }
+
+        let GlState::Init(Context {
+            gl_cx,
+            gr_cx,
+            stencil_size,
+            num_samples,
+            fb_info,
+            gl_surface,
+            skia_surface,
+            ..
+        }) = &mut *this.state.borrow_mut()
+        else {
+            return;
+        };
+
+        match event {
+            WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
+                gl_surface.resize(
+                    gl_cx,
+                    NonZeroU32::new(size.width).unwrap(),
+                    NonZeroU32::new(size.height).unwrap(),
+                );
+                *skia_surface = create_skia_surface(
+                    (size.width as _, size.height as _),
+                    *fb_info,
+                    gr_cx,
+                    *num_samples as _,
+                    *stencil_size as _,
+                );
+            }
+
+            WindowEvent::CloseRequested
+            | WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        logical_key: Key::Named(NamedKey::Escape),
+                        ..
+                    },
+                ..
+            } => {
+                el.exit();
+            }
+
+            WindowEvent::RedrawRequested => {
+                let canvas = skia_surface.canvas();
+                canvas.clear(Color::WHITE);
+
+                let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
+                paint.set_style(PaintStyle::Fill);
+                canvas.draw_rect(Rect::new(50.0, 50.0, 200.0, 200.0), &paint);
+
+                gr_cx.flush_and_submit();
+                gl_surface.swap_buffers(gl_cx).unwrap();
+            }
+
+            _ => {}
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Context {
+    gl_cx: PossiblyCurrentContext,
+    gr_cx: DirectContext,
+
+    num_samples: u8,
+    stencil_size: u8,
+    fb_info: FramebufferInfo,
+
+    gl_surface: glutin::surface::Surface<WindowSurface>,
+    skia_surface: skia_safe::Surface,
+}
+
+#[derive(Debug)]
+enum GlState {
+    Uninit { builder: DisplayBuilder },
+    Init(Context),
+    Suspended { cx: NotCurrentContext },
+    Invalid,
+}
+
+impl GlState {
+    // TODO:: error handling
+    pub fn resume(self, el: &ActiveEventLoop, attr: WindowAttributes) -> Option<(Window, Context)> {
+        let (window, gl_config, gl_cx) = match self {
             GlState::Uninit { builder } => {
                 let template = ConfigTemplateBuilder::new().with_alpha_size(8);
 
                 let Ok((Some(window), gl_config)) = builder.build(el, template, gl_config_picker)
                 else {
-                    println!("init failed");
-                    el.exit();
-                    return;
+                    return None;
                 };
 
                 println!("Picked a config with {} samples", gl_config.num_samples());
@@ -82,31 +205,21 @@ impl Component<'_> for SkiaWindow {
                 println!("Recreating window in `resumed`");
                 // Pick the config which we already use for the context.
                 let gl_config = cx.config();
-                match finalize_window(el, this.attr.clone(), &gl_config) {
+                match finalize_window(el, attr, &gl_config) {
                     Ok(window) => (window, gl_config, cx),
-                    Err(err) => {
-                        println!("window creation error: {err}");
-                        el.exit();
-                        return;
+                    Err(_err) => {
+                        return None;
                     }
                 }
             }
 
-            GlState::Invalid => {
-                println!("GlState is invalid");
-                el.exit();
-                return;
-            }
-
-            init @ GlState::Init { .. } => {
-                this.state.replace(init);
-                return;
+            _ => {
+                return None;
             }
         };
 
         let Ok(attrs) = window.build_surface_attributes(Default::default()) else {
-            el.exit();
-            return;
+            return None;
         };
         let gl_surface = unsafe {
             gl_config
@@ -172,124 +285,29 @@ impl Component<'_> for SkiaWindow {
                 .to_string_lossy()
         );
 
-        this.state.replace(GlState::Init {
-            gl_cx,
-            gr_cx,
-            num_samples,
-            stencil_size,
-            fb_info,
-            gl_surface,
-            skia_surface,
-        });
-
-        self.window().set(Some(window));
+        Some((
+            window,
+            Context {
+                gl_cx,
+                gr_cx,
+                num_samples,
+                stencil_size,
+                fb_info,
+                gl_surface,
+                skia_surface,
+            },
+        ))
     }
 
-    fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
-        let this = self.project_ref();
-        this.window.set(None);
-
-        if let GlState::Init { gl_cx: cx, .. } = this.state.replace(GlState::Invalid) {
-            this.state.replace(GlState::Suspended {
-                cx: cx.make_not_current().unwrap(),
-            });
+    pub fn suspend(self) -> Self {
+        if let GlState::Init(cx) = self {
+            GlState::Suspended {
+                cx: cx.gl_cx.make_not_current().unwrap(),
+            }
+        } else {
+            self
         }
     }
-
-    fn on_window_event(
-        self: Pin<&Self>,
-        el: &ActiveEventLoop,
-        window_id: WindowId,
-        event: &mut WindowEvent,
-    ) {
-        let this = self.project_ref();
-
-        let Some(window) = &*this.window.get_untracked() else {
-            return;
-        };
-        if window.id() != window_id {
-            return;
-        }
-
-        let GlState::Init {
-            gl_cx,
-            gr_cx,
-            stencil_size,
-            num_samples,
-            fb_info,
-            gl_surface,
-            skia_surface,
-            ..
-        } = &mut *this.state.borrow_mut()
-        else {
-            return;
-        };
-
-        match event {
-            WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
-                gl_surface.resize(
-                    gl_cx,
-                    NonZeroU32::new(size.width).unwrap(),
-                    NonZeroU32::new(size.height).unwrap(),
-                );
-                *skia_surface = create_skia_surface(
-                    (size.width as _, size.height as _),
-                    *fb_info,
-                    gr_cx,
-                    *num_samples as _,
-                    *stencil_size as _,
-                );
-            }
-
-            WindowEvent::CloseRequested
-            | WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        logical_key: Key::Named(NamedKey::Escape),
-                        ..
-                    },
-                ..
-            } => {
-                el.exit();
-            }
-
-            WindowEvent::RedrawRequested => {
-                let canvas = skia_surface.canvas();
-                canvas.clear(Color::WHITE);
-
-                let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
-                paint.set_style(PaintStyle::Fill);
-                canvas.draw_rect(Rect::new(50.0, 50.0, 200.0, 200.0), &paint);
-
-                gr_cx.flush_and_submit();
-                gl_surface.swap_buffers(gl_cx).unwrap();
-            }
-
-            _ => {}
-        }
-    }
-}
-
-#[derive(Debug)]
-enum GlState {
-    Uninit {
-        builder: DisplayBuilder,
-    },
-    Init {
-        gl_cx: PossiblyCurrentContext,
-        gr_cx: DirectContext,
-
-        num_samples: u8,
-        stencil_size: u8,
-        fb_info: FramebufferInfo,
-
-        gl_surface: glutin::surface::Surface<WindowSurface>,
-        skia_surface: skia_safe::Surface,
-    },
-    Suspended {
-        cx: NotCurrentContext,
-    },
-    Invalid,
 }
 
 fn gl_config_picker(configs: Box<dyn Iterator<Item = Config> + '_>) -> Config {
