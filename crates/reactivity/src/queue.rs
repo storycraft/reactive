@@ -30,7 +30,14 @@ impl Queue {
         self.updates.is_empty()
     }
 
-    pub fn update_waker(&self, waker: &Waker) {
+    pub fn run(self: Pin<&Self>, waker: &Waker) {
+        let this = self.project_ref();
+
+        while let Some(entry) = this.updates.iter().next() {
+            entry.unlink();
+            entry.value().call();
+        }
+
         if let Some(current) = self.waker.take() {
             if current.will_wake(waker) {
                 self.waker.set(Some(current));
@@ -39,15 +46,6 @@ impl Queue {
         }
 
         self.waker.set(Some(waker.clone()));
-    }
-
-    pub fn run(self: Pin<&Self>) {
-        let this = self.project_ref();
-
-        while let Some(entry) = this.updates.iter().next() {
-            entry.unlink();
-            entry.value().call();
-        }
     }
 
     pub(crate) fn add(self: Pin<&Self>, entry: &Entry<EffectFn>) {
