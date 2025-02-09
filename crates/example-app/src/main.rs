@@ -3,6 +3,7 @@ use core::{
     time::Duration,
 };
 
+use futures_lite::FutureExt;
 use pin_project::pin_project;
 use reactive::{
     resource::Resource,
@@ -66,7 +67,11 @@ async fn async_main() {
     });
 
     main.show(|ui| async move {
-        ui.add(tracker).await;
+        loop {
+            // blinking
+            ui.add(tracker).or(sleep(Duration::from_secs(1))).await;
+            sleep(Duration::from_secs(1)).await;
+        }
     })
     .await;
 }

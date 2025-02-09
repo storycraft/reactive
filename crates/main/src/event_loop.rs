@@ -39,16 +39,13 @@ where
             }
 
             let cx = self.cx.as_ref();
-            let queue = cx.queue();
-            if !queue.is_empty() {
-                queue.run();
-
-                for handler in cx.handlers().iter() {
-                    handler.value().with(|handler| handler.request_redraw());
-                }
+            for handler in cx.handlers().iter() {
+                handler.value().with(|handler| handler.request_redraw());
             }
-
+            let queue = cx.queue();
+            queue.run();
             queue.update_waker(&self.waker);
+
             Poll::Pending
         })
     }
