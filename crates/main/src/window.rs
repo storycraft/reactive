@@ -31,9 +31,8 @@ use skia_safe::{
     Color, ColorType,
 };
 use winit::{
-    event::{KeyEvent, WindowEvent},
+    event::WindowEvent,
     event_loop::ActiveEventLoop,
-    keyboard::{Key, NamedKey},
     raw_window_handle::HasWindowHandle,
     window::{Window, WindowAttributes, WindowId},
 };
@@ -109,18 +108,6 @@ impl SkiaWindow {
                     *num_samples as _,
                     *stencil_size as _,
                 );
-            }
-
-            WindowEvent::CloseRequested
-            | WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        logical_key: Key::Named(NamedKey::Escape),
-                        ..
-                    },
-                ..
-            } => {
-                this.window.set(None);
             }
 
             WindowEvent::RedrawRequested => {
