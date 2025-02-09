@@ -8,7 +8,10 @@ use reactive::{
     resource::Resource,
     run,
     state::StateCell,
-    window::{element::Element, SkiaWindow},
+    window::{
+        element::{Element, SetupFn},
+        SkiaWindow,
+    },
 };
 use reactivity::let_effect;
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
@@ -62,7 +65,7 @@ async fn async_main() {
         }
     });
 
-    main.render(|ui| async move {
+    main.show(|ui| async move {
         ui.add(tracker).await;
     })
     .await;
@@ -118,4 +121,8 @@ impl Element for MouseTracker {
 
         canvas.draw_rect(Rect::new(x, y, x + 50.0, y + 50.0), &paint);
     }
+}
+
+impl SetupFn<'_> for MouseTracker {
+    type Output = ();
 }

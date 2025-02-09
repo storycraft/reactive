@@ -2,14 +2,13 @@ pub mod context;
 pub mod handler;
 
 use core::{
-    future::{pending, Future},
+    future::Future,
     pin::{pin, Pin},
-    task::{Context, Waker},
+    task::{Context, Poll, Waker},
 };
 use std::rc::Rc;
 
 use context::AppCx;
-use never_say_never::Never;
 use waker_fn::waker_fn;
 use winit::{
     application::ApplicationHandler,
@@ -26,14 +25,18 @@ struct App<'a, Fut> {
 
 impl<Fut> App<'_, Fut>
 where
-    Fut: Future<Output = Never>,
+    Fut: Future<Output = ()>,
 {
-    fn poll(&mut self) {
+    fn poll(&mut self) -> Poll<Fut::Output> {
         AppCx::set(&self.cx, || {
-            let _ = self
+            if self
                 .fut
                 .as_mut()
-                .poll(&mut Context::from_waker(&self.waker));
+                .poll(&mut Context::from_waker(&self.waker))
+                .is_ready()
+            {
+                return Poll::Ready(());
+            }
 
             let cx = self.cx.as_ref();
             let queue = cx.queue();
@@ -44,14 +47,16 @@ where
                     handler.value().with(|handler| handler.request_redraw());
                 }
             }
+
             queue.update_waker(&self.waker);
-        });
+            Poll::Pending
+        })
     }
 }
 
 impl<Fut> ApplicationHandler for App<'_, Fut>
 where
-    Fut: Future<Output = Never>,
+    Fut: Future<Output = ()>,
 {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         AppCx::set(&self.cx, || {
@@ -64,9 +69,20 @@ where
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
         AppCx::set(&self.cx, || {
             for entry in self.cx.as_ref().handlers().iter() {
-                entry
-                    .value()
-                    .with(|handler| handler.on_window_event(el, window_id, &mut event));
+                if entry.value().with(|handler| {
+                    if handler
+                        .window_id()
+                        .map(|id| id == window_id)
+                        .unwrap_or(false)
+                    {
+                        handler.on_window_event(el, &mut event);
+                        true
+                    } else {
+                        false
+                    }
+                }) {
+                    break;
+                }
             }
         });
     }
@@ -79,12 +95,14 @@ where
         });
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
-        self.poll();
+    fn user_event(&mut self, el: &ActiveEventLoop, _: ()) {
+        if self.poll().is_ready() {
+            el.exit();
+        }
     }
 }
 
-pub fn run<Fut: Future>(fut: Fut) {
+pub fn run<Fut: Future<Output = ()>>(fut: Fut) {
     // TODO:: error handling
     let el = EventLoop::<()>::with_user_event().build().unwrap();
 
@@ -96,16 +114,14 @@ pub fn run<Fut: Future>(fut: Fut) {
     });
 
     let cx = Rc::pin(AppCx::new(Some(waker.clone())));
-    let fut = pin!({
-        let cx = cx.clone();
-        async move {
-            cx.executor().run(fut).await;
-            pending().await
-        }
-    });
+
+    let fut_cx = cx.clone();
+    let fut = pin!(fut_cx.executor().run(fut));
 
     let mut app = App { cx, waker, fut };
-    app.poll();
+    if app.poll().is_ready() {
+        return;
+    }
 
     // TODO:: error handling
     el.run_app(&mut app).unwrap();

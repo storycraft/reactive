@@ -1,5 +1,5 @@
 use core::{
-    future::{pending, Future},
+    future::Future,
     pin::{pin, Pin},
 };
 
@@ -8,7 +8,7 @@ use reactivity::list::{List, Node};
 use skia_safe::Canvas;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 
-use super::Element;
+use super::{Element, SetupFn};
 
 #[derive(Debug)]
 #[pin_project]
@@ -26,20 +26,23 @@ impl Ui {
         self.project_ref().list
     }
 
-    pub async fn add(self: Pin<&Self>, element: Pin<&dyn Element>) -> ! {
+    pub async fn add<'a, T: Element + SetupFn<'a>>(
+        self: Pin<&Self>,
+        element: Pin<&'a T>,
+    ) -> T::Output {
         let node = pin!(Node::new(ElementKey {
             ptr: &*element as *const _ as *const _,
         }));
 
         self.list().push_front(node.into_ref().entry());
-        pending().await
+        element.setup().await
     }
 
-    pub async fn run<'a, Fut: Future<Output = ()> + 'a>(
+    pub async fn run<'a, Fut: Future + 'a>(
         self: Pin<&'a Self>,
         f: impl FnOnce(Pin<&'a Ui>) -> Fut,
-    ) {
-        f(self).await;
+    ) -> Fut::Output {
+        f(self).await
     }
 }
 
@@ -67,8 +70,12 @@ impl Element for Ui {
     }
 }
 
+pub trait UiExt {
+    fn add(self);
+}
+
 #[derive(Debug)]
-pub struct ElementKey {
+struct ElementKey {
     ptr: *const dyn Element,
 }
 

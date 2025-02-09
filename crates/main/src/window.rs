@@ -71,68 +71,17 @@ impl SkiaWindow {
         self.project_ref().window
     }
 
-    pub async fn render<'a, Fut: Future<Output = ()> + 'a>(
+    pub async fn show<'a, Fut: Future + 'a>(
         self: Pin<&'a Self>,
         f: impl FnOnce(Pin<&'a Ui>) -> Fut,
-    ) {
-        HandlerKey::register(self, self.project_ref().children.run(f)).await;
-    }
-}
-
-impl Default for SkiaWindow {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl EventHandler for SkiaWindow {
-    fn request_redraw(self: Pin<&Self>) {
-        if let Some(window) = &*self.project_ref().window.get_untracked() {
-            window.request_redraw();
-        }
+    ) -> Fut::Output {
+        HandlerKey::register(self, self.project_ref().children.run(f)).await
     }
 
-    fn resumed(self: Pin<&Self>, el: &ActiveEventLoop) {
-        let this = self.project_ref();
-
-        // TODO:: error handling
-        let Some((window, cx)) = (match this.state.replace(WindowState::Invalid) {
-            WindowState::Invalid => {
-                println!("GlState is invalid");
-                el.exit();
-                return;
-            }
-
-            state => state.resume(el, self.attr.clone()),
-        }) else {
-            println!("Window creation failed");
-            el.exit();
-
-            return;
-        };
-
-        this.state.replace(WindowState::Init(cx));
-        this.window.set(Some(window));
-    }
-
-    fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
-        let this = self.project_ref();
-        this.window.set(None);
-
-        this.state
-            .replace(this.state.replace(WindowState::Invalid).suspend());
-    }
-
-    fn on_window_event(
-        self: Pin<&Self>,
-        el: &ActiveEventLoop,
-        window_id: WindowId,
-        event: &mut WindowEvent,
-    ) {
+    fn process_window_events(self: Pin<&Self>, event: &mut WindowEvent) {
         let this = self.project_ref();
 
         let WindowState::Init(Context {
-            id,
             gl_cx,
             gr_cx,
             stencil_size,
@@ -145,10 +94,6 @@ impl EventHandler for SkiaWindow {
         else {
             return;
         };
-
-        if *id != window_id {
-            return;
-        }
 
         match event {
             WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
@@ -190,7 +135,62 @@ impl EventHandler for SkiaWindow {
 
             _ => {}
         }
+    }
+}
 
+impl Default for SkiaWindow {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EventHandler for SkiaWindow {
+    fn window_id(self: Pin<&Self>) -> Option<WindowId> {
+        let WindowState::Init(Context { id, .. }) = *self.project_ref().state.borrow() else {
+            return None;
+        };
+
+        Some(id)
+    }
+
+    fn request_redraw(self: Pin<&Self>) {
+        if let Some(window) = &*self.project_ref().window.get_untracked() {
+            window.request_redraw();
+        }
+    }
+
+    fn resumed(self: Pin<&Self>, el: &ActiveEventLoop) {
+        let this = self.project_ref();
+
+        // TODO:: error handling
+        let Some((window, cx)) = (match this.state.replace(WindowState::Invalid) {
+            WindowState::Invalid => {
+                println!("GlState is invalid");
+                return;
+            }
+
+            state => state.resume(el, self.attr.clone()),
+        }) else {
+            println!("Window creation failed");
+            return;
+        };
+
+        this.state.replace(WindowState::Init(cx));
+        this.window.set(Some(window));
+    }
+
+    fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
+        let this = self.project_ref();
+        this.window.set(None);
+
+        this.state
+            .replace(this.state.replace(WindowState::Invalid).suspend());
+    }
+
+    fn on_window_event(self: Pin<&Self>, el: &ActiveEventLoop, event: &mut WindowEvent) {
+        self.process_window_events(event);
+
+        let this = self.project_ref();
         this.children.on_event(el, event);
     }
 }
@@ -198,15 +198,18 @@ impl EventHandler for SkiaWindow {
 #[derive(Debug)]
 struct Context {
     id: WindowId,
-    gl_cx: PossiblyCurrentContext,
+
+    skia_surface: skia_safe::Surface,
     gr_cx: DirectContext,
 
     num_samples: u8,
     stencil_size: u8,
     fb_info: FramebufferInfo,
 
+    // https://github.com/rust-skia/rust-skia/issues/476
+    // Skia hangs if gl contexts drop before skia context
+    gl_cx: PossiblyCurrentContext,
     gl_surface: glutin::surface::Surface<WindowSurface>,
-    skia_surface: skia_safe::Surface,
 }
 
 #[derive(Debug)]
