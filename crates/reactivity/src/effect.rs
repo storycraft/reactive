@@ -1,4 +1,4 @@
-pub mod handle;
+pub(crate) mod handle;
 
 use core::{marker::PhantomData, pin::Pin, ptr::NonNull};
 
@@ -25,8 +25,6 @@ impl<'a> Effect<'a> {
     }
 
     pub fn init<'b>(self: Pin<&mut Self>, bindings: impl IntoIterator<Item = Pin<&'b Binding>>) {
-        let handle = self.project().handle.into_ref();
-        handle.init(bindings);
-        handle.call_f();
+        self.project().handle.into_ref().init(bindings);
     }
 }

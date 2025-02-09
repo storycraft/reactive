@@ -26,10 +26,6 @@ impl EffectHandle {
         }
     }
 
-    pub fn call_f(self: Pin<&Self>) {
-        self.project_ref().to_queue.entry().value().call();
-    }
-
     pub fn init<'a>(self: Pin<&Self>, bindings: impl IntoIterator<Item = Pin<&'a Binding>>) {
         let this = self.project_ref();
         let entry_ptr = NonNull::from(this.to_queue.entry());
@@ -41,6 +37,8 @@ impl EffectHandle {
 
             this.bindings.push_front(to_handle);
         }
+
+        this.to_queue.entry().value().call();
     }
 }
 
