@@ -22,6 +22,7 @@ use glutin::{
 };
 use glutin_winit::{finalize_window, DisplayBuilder, GlWindow};
 use pin_project::pin_project;
+use reactivity::let_effect;
 use skia_safe::{
     gpu::{
         self, backend_render_targets,
@@ -50,7 +51,7 @@ pub struct SkiaWindow {
     #[pin]
     window: StateRefCell<Option<Window>>,
     #[pin]
-    children: Ui,
+    ui: Ui,
 }
 
 impl SkiaWindow {
@@ -62,7 +63,7 @@ impl SkiaWindow {
             state: RefCell::new(WindowState::Uninit { builder }),
             attr,
             window: StateRefCell::new(None),
-            children: Ui::new(),
+            ui: Ui::new(),
         }
     }
 
@@ -74,7 +75,20 @@ impl SkiaWindow {
         self: Pin<&'a Self>,
         f: impl FnOnce(Pin<&'a Ui>) -> Fut,
     ) -> Fut::Output {
-        HandlerKey::register(self, self.project_ref().children.run(f)).await
+        HandlerKey::register(self, async move {
+            let this = self.project_ref();
+
+            let_effect!(|| {
+                this.ui.tracked($);
+
+                if let Some(window) = &*this.window.get_untracked() {
+                    window.request_redraw();
+                }
+            });
+
+            this.ui.run(f).await
+        })
+        .await
     }
 
     fn process_window_events(self: Pin<&Self>, event: &mut WindowEvent) {
@@ -114,7 +128,7 @@ impl SkiaWindow {
                 let canvas = skia_surface.canvas();
                 canvas.clear(Color::BLACK);
 
-                this.children.draw(canvas);
+                this.ui.draw(canvas);
 
                 gr_cx.flush_and_submit();
                 gl_surface.swap_buffers(gl_cx).unwrap();
@@ -178,7 +192,7 @@ impl EventHandler for SkiaWindow {
         self.process_window_events(event);
 
         let this = self.project_ref();
-        this.children.on_event(el, event);
+        this.ui.on_event(el, event);
     }
 }
 

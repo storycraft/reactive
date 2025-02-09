@@ -4,9 +4,16 @@ use core::{
 };
 
 use pin_project::pin_project;
-use reactivity::list::{List, Node};
+use reactivity::{
+    binding::Binding,
+    list::{List, Node},
+    tracker::DependencyTracker,
+};
+use scopeguard::defer;
 use skia_safe::Canvas;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
+
+use crate::event_loop::context::AppCx;
 
 use super::{Element, SetupFn};
 
@@ -15,15 +22,30 @@ use super::{Element, SetupFn};
 pub struct Ui {
     #[pin]
     list: List<ElementKey>,
+    #[pin]
+    tracker: DependencyTracker,
 }
 
 impl Ui {
     pub fn new() -> Self {
-        Self { list: List::new() }
+        Self {
+            list: List::new(),
+            tracker: DependencyTracker::new(),
+        }
     }
 
-    fn list(self: Pin<&Self>) -> Pin<&List<ElementKey>> {
+    pub fn list(self: Pin<&Self>) -> Pin<&List<ElementKey>> {
         self.project_ref().list
+    }
+
+    fn tracker(self: Pin<&Self>) -> Pin<&DependencyTracker> {
+        self.project_ref().tracker
+    }
+
+    pub fn tracked(self: Pin<&Self>, binding: Pin<&Binding>) -> Pin<&List<ElementKey>> {
+        let this = self.project_ref();
+        this.tracker.register(binding);
+        this.list
     }
 
     pub async fn add<'a, T: Element + SetupFn<'a>>(
@@ -34,13 +56,20 @@ impl Ui {
             ptr: &*element as *const _ as *const _,
         }));
 
+        AppCx::with(|cx| {
+            self.tracker().notify(cx.as_ref().queue());
+        });
         self.list().push_front(node.into_ref().entry());
+        defer!(AppCx::with(|cx| {
+            self.tracker().notify(cx.as_ref().queue());
+        }));
+
         element.setup().await
     }
 
     pub async fn run<'a, Fut: Future + 'a>(
         self: Pin<&'a Self>,
-        f: impl FnOnce(Pin<&'a Ui>) -> Fut,
+        f: impl FnOnce(Pin<&'a Self>) -> Fut,
     ) -> Fut::Output {
         f(self).await
     }
@@ -75,7 +104,7 @@ pub trait UiExt {
 }
 
 #[derive(Debug)]
-struct ElementKey {
+pub struct ElementKey {
     ptr: *const dyn Element,
 }
 
