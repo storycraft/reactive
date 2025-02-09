@@ -2,7 +2,7 @@
 name = "reactivity"
 version = { workspace = true }
 edition = { workspace = true }
-authors = { workspace = true }
+authors = ["storycraft <storycraft@pancake.sh>"]
 license = { workspace = true }
 
 [features]

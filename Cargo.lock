@@ -1304,9 +1304,22 @@ dependencies = [
  "reactivity",
  "scoped-tls-hkt",
  "skia-safe",
- "taffy",
  "waker-fn",
  "winit",
+]
+
+[[package]]
+name = "reactive-layout"
+version = "0.1.0"
+dependencies = [
+ "reactive",
+]
+
+[[package]]
+name = "reactive-primitive"
+version = "0.1.0"
+dependencies = [
+ "reactive",
 ]
 
 [[package]]
@@ -1611,15 +1624,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "taffy"
-version = "0.7.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "944a2a0b6070d217b69afb819f65f84ba093c43d627571fdac1c46f03a14d326"
-dependencies = [
- "arrayvec",
 ]
 
 [[package]]

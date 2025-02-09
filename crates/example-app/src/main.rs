@@ -14,7 +14,6 @@ use reactive::{
         SkiaWindow,
     },
 };
-use reactivity::let_effect;
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};

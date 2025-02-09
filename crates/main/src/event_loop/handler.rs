@@ -12,6 +12,7 @@ pub trait EventHandler {
     fn window_id(self: Pin<&Self>) -> Option<WindowId>;
     fn request_redraw(self: Pin<&Self>);
 
+    // TODO::
     fn resumed(self: Pin<&Self>, _el: &ActiveEventLoop) {}
     fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {}
 
