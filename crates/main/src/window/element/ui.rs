@@ -1,14 +1,11 @@
 use core::{
+    array,
     future::Future,
     pin::{pin, Pin},
 };
 
 use pin_project::pin_project;
-use reactivity::{
-    effect::Binding,
-    list::{List, Node},
-    tracker::DependencyTracker,
-};
+use reactivity::{define_safe_list, effect::Binding, list::Node, tracker::DependencyTracker};
 use scopeguard::defer;
 use skia_safe::Canvas;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
@@ -17,11 +14,13 @@ use crate::event_loop::context::AppCx;
 
 use super::{Element, SetupFn};
 
+define_safe_list!(pub ElementList = Pin<&dyn Element>);
+
 #[derive(Debug)]
 #[pin_project]
 pub struct Ui {
     #[pin]
-    list: List<ElementKey>,
+    list: ElementList,
     #[pin]
     tracker: DependencyTracker,
 }
@@ -29,12 +28,12 @@ pub struct Ui {
 impl Ui {
     pub fn new() -> Self {
         Self {
-            list: List::new(),
+            list: ElementList::new(),
             tracker: DependencyTracker::new(),
         }
     }
 
-    pub fn list(self: Pin<&Self>) -> Pin<&List<ElementKey>> {
+    pub fn list(self: Pin<&Self>) -> Pin<&ElementList> {
         self.project_ref().list
     }
 
@@ -42,23 +41,42 @@ impl Ui {
         self.project_ref().tracker
     }
 
-    pub fn tracked(self: Pin<&Self>, binding: Pin<&Binding>) -> Pin<&List<ElementKey>> {
+    pub fn tracked(self: Pin<&Self>, binding: Pin<&Binding>) -> Pin<&ElementList> {
         let this = self.project_ref();
         this.tracker.register(binding);
         this.list
+    }
+
+    pub async fn show<'a, const ELEMENTS: usize>(
+        self: Pin<&Self>,
+        elements: [Pin<&'a dyn Element>; ELEMENTS],
+    ) {
+        let _keys = array::from_fn::<_, ELEMENTS, _>(|i| {
+            Node::new(unsafe { Pin::new_unchecked(&elements[i]) })
+        });
+
+        AppCx::with(|cx| {
+            self.tracker().notify(cx.as_ref().queue());
+        });
+
+        // self.list().push_front(node.into_ref().entry());
+        defer!(AppCx::with(|cx| {
+            self.tracker().notify(cx.as_ref().queue());
+        }));
+
+        // element.setup().await
     }
 
     pub async fn add<'a, T: Element + SetupFn<'a>>(
         self: Pin<&Self>,
         element: Pin<&'a T>,
     ) -> T::Output {
-        let node = pin!(Node::new(ElementKey {
-            ptr: &*element as *const _ as *const _,
-        }));
+        let node = pin!(Node::new(element as Pin<&'a dyn Element>));
 
         AppCx::with(|cx| {
             self.tracker().notify(cx.as_ref().queue());
         });
+
         self.list().push_front(node.into_ref().entry());
         defer!(AppCx::with(|cx| {
             self.tracker().notify(cx.as_ref().queue());
@@ -83,34 +101,18 @@ impl Default for Ui {
 
 impl Element for Ui {
     fn on_event(self: Pin<&Self>, el: &ActiveEventLoop, event: &mut WindowEvent) {
-        for child in self.list().iter() {
-            child.value().with(|child| {
-                child.on_event(el, event);
-            });
-        }
+        self.list().iter(|mut iter| {
+            while let Some(child) = iter.next() {
+                child.value().on_event(el, event);
+            }
+        });
     }
 
     fn draw(self: Pin<&Self>, canvas: &Canvas) {
-        for child in self.list().iter() {
-            child.value().with(|child| {
-                child.draw(canvas);
-            });
-        }
-    }
-}
-
-pub trait UiExt {
-    fn add(self);
-}
-
-#[derive(Debug)]
-pub struct ElementKey {
-    ptr: *const dyn Element,
-}
-
-impl ElementKey {
-    pub fn with<R>(&self, f: impl FnOnce(Pin<&dyn Element>) -> R) -> R {
-        // SAFETY: Component is pinned and guaranteed won't drop before the Node drops
-        f(unsafe { Pin::new_unchecked(&*self.ptr) })
+        self.list().iter(|mut iter| {
+            while let Some(child) = iter.next() {
+                child.value().draw(canvas);
+            }
+        });
     }
 }

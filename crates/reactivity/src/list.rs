@@ -1,110 +1,108 @@
 pub mod iter;
 mod ptr;
+pub mod raw;
 
 use core::{
-    cell::Cell,
-    fmt::{self, Debug, Formatter},
+    fmt::Debug,
     pin::{pin, Pin},
-    ptr::NonNull,
 };
 
-use iter::Iter;
 use pin_project::{pin_project, pinned_drop};
 use pinned_aliasable::Aliasable;
-use ptr::EntryPtr;
+use raw::Link;
 
-#[pin_project(PinnedDrop)]
-pub struct List<T: ?Sized> {
-    #[pin]
-    start: Aliasable<Next<T>>,
-}
-
-impl<T: ?Sized> List<T> {
-    pub fn new() -> Self {
-        Self {
-            start: Aliasable::new(Next::new(None)),
-        }
-    }
-
-    fn start(&self) -> Option<EntryPtr<T>> {
-        // SAFETY: start is always unique and None if self is not pinned
-        unsafe { Pin::new_unchecked(&self.start) }.get().get()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.start().is_none()
-    }
-
-    pub fn push_front(self: Pin<&Self>, entry: &Entry<T>) {
-        let start = self.project_ref().start.get();
-        entry.unlink();
-        entry.next.set(start.get());
-        entry.parent.set(Some(NonNull::from(start)));
-
-        if let Some(old) = start.replace(Some(EntryPtr::new(entry))) {
-            // SAFETY: Replace parent of linked start node
-            unsafe { old.as_ref() }
-                .parent
-                .set(Some(NonNull::from(&entry.next)));
-        }
-    }
-
-    pub fn iter(&self) -> Iter<T> {
-        self.into_iter()
-    }
-
-    pub fn take<R>(self: Pin<&Self>, f: impl FnOnce(Pin<&Self>) -> R) -> R {
-        let list = pin!(Self::new());
-        let list = list.as_ref();
-
-        if let Some(ptr) = self.project_ref().start.get().take() {
-            let new_start = list.project_ref().start.get();
-            new_start.set(Some(ptr));
-            unsafe { ptr.as_ref() }
-                .parent
-                .set(Some(NonNull::from(new_start)));
+#[macro_export]
+/// Define a new Safe wrapper around [`raw::RawList`]
+macro_rules! define_safe_list {
+    ($vis:vis $name:ident = for<$($lt:lifetime),*> $ty:ty) => {
+        #[derive(Debug)]
+        #[$crate::__private::pin_project::pin_project]
+        #[repr(transparent)]
+        $vis struct $name {
+            #[pin]
+            raw: $crate::list::raw::RawList,
         }
 
-        f(list)
-    }
+        #[allow(unused)]
+        impl $name {
+            /// Create a new List
+            pub fn new() -> Self {
+                Self {
+                    raw: $crate::list::raw::RawList::new(),
+                }
+            }
 
-    pub fn clear(&self) {
-        for entry in self.iter() {
-            entry.unlink();
+            /// Check if list is empty
+            pub fn is_empty(&self) -> bool {
+                self.raw.is_empty()
+            }
+
+            /// Link a entry to start
+            pub fn push_front<T>(
+                self: ::core::pin::Pin<&Self>,
+                entry: &$crate::list::Entry<T>
+            )
+                where for<$($lt),*> fn($ty): ::core::ops::Fn(T)
+            {
+                unsafe {
+                    self.project_ref().raw.push_front(entry);
+                }
+            }
+
+            /// Traverse list from the start until `f` returns true
+            pub fn iter<R>(
+                &self,
+                f: impl for<$($lt),*> ::core::ops::FnOnce(
+                    $crate::list::iter::Iter<'_, $ty>
+                ) -> R
+            ) -> R
+            {
+                // SAFETY: hide unbound lifetimes in higher kinded closure
+                f(unsafe { $crate::list::iter::Iter::from(self.raw.iter()) })
+            }
+
+            pub fn take<R>(
+                self: ::core::pin::Pin<&Self>,
+                f: impl FnOnce(::core::pin::Pin<&Self>) -> R
+            ) -> R {
+                // SAFETY: casting transparent struct
+                    self.project_ref().raw.take(
+                        move |inner| f(
+                            unsafe {
+                                *(&inner as *const _ as *const ::core::pin::Pin<&Self>)
+                            }
+                        )
+                    )
+            }
+
+            /// Clear the list
+            pub fn clear(&self) {
+                self.raw.clear();
+            }
         }
-    }
+
+        impl ::core::default::Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+    };
+    
+    ($vis:vis $name:ident = $ty:ty) => {
+        $crate::define_safe_list!($vis $name = for<> $ty);
+    };
 }
 
-impl<T: ?Sized> Default for List<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T: ?Sized + Debug> Debug for List<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
-    }
-}
-
-#[pinned_drop]
-impl<T: ?Sized> PinnedDrop for List<T> {
-    fn drop(self: Pin<&mut Self>) {
-        // Unlink all entries before dropping list
-        self.into_ref().clear();
-    }
-}
-
-#[pin_project(PinnedDrop)]
 #[derive(Debug)]
-pub struct Entry<T: ?Sized> {
-    next: Next<T>,
-    parent: Parent<T>,
+#[pin_project(PinnedDrop)]
+#[repr(C)]
+pub struct Entry<T> {
+    link: Link,
     #[pin]
     value: T,
 }
 
-impl<T: ?Sized> Entry<T> {
+impl<T> Entry<T> {
     pub fn value(&self) -> &T {
         &self.value
     }
@@ -115,25 +113,16 @@ impl<T: ?Sized> Entry<T> {
     }
 
     pub fn linked(&self) -> bool {
-        self.parent.get().is_some()
+        self.link.linked()
     }
 
     pub fn unlink(&self) {
-        if let Some(parent) = self.parent.take() {
-            let next = self.next.take();
-
-            if let Some(next) = next {
-                // SAFETY: pointer is valid as long as linked
-                unsafe { next.as_ref() }.parent.set(Some(parent));
-            }
-            // SAFETY: pointer is valid as long as linked
-            unsafe { parent.as_ref() }.set(next);
-        }
+        self.link.unlink();
     }
 }
 
 #[pinned_drop]
-impl<T: ?Sized> PinnedDrop for Entry<T> {
+impl<T> PinnedDrop for Entry<T> {
     fn drop(self: Pin<&mut Self>) {
         // unlink from list before drop
         self.unlink();
@@ -152,8 +141,7 @@ impl<T> Node<T> {
     pub fn new(value: T) -> Self {
         Self {
             inner: Aliasable::new(Entry {
-                next: Next::new(None),
-                parent: Parent::new(None),
+                link: Link::new(),
                 value,
             }),
         }
@@ -165,42 +153,27 @@ impl<T> Node<T> {
     }
 }
 
-#[repr(transparent)]
-#[derive(Debug, derive_more::Deref)]
-struct Next<T: ?Sized>(Cell<Option<EntryPtr<T>>>);
-
-impl<T: ?Sized> Next<T> {
-    pub const fn new(inner: Option<EntryPtr<T>>) -> Self {
-        Self(Cell::new(inner))
-    }
-}
-
-#[repr(transparent)]
-#[derive(Debug, derive_more::Deref)]
-struct Parent<T: ?Sized>(Cell<Option<NonNull<Next<T>>>>);
-
-impl<T: ?Sized> Parent<T> {
-    pub const fn new(inner: Option<NonNull<Next<T>>>) -> Self {
-        Self(Cell::new(inner))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use core::pin::pin;
 
-    use crate::list::Entry;
+    use crate::{define_safe_list, list::Entry};
 
-    use super::{List, Node};
+    use super::Node;
 
     #[test]
     fn test() {
+        define_safe_list!(List = &mut i32);
+
         let mut list = pin!(List::new());
         let list2 = pin!(List::new());
         let list2 = list2.into_ref();
 
-        let node1 = pin!(Node::new(1234));
-        let node2 = pin!(Node::new(5678));
+        let mut a = 1234;
+        let mut b = 5678;
+
+        let node1 = pin!(Node::new(&mut a));
+        let node2 = pin!(Node::new(&mut b));
         let entry1 = node1.into_ref().entry();
         let entry2 = node2.into_ref().entry();
         list.as_ref().push_front(entry2);
@@ -213,12 +186,13 @@ mod tests {
         list.as_ref().push_front(entry1);
 
         list.as_ref().take(|list| {
-            let mut iter = list.iter();
-            assert_eq!(iter.next().map(Entry::value), Some(&1234));
-            let _a = entry1;
-            let _b = entry2;
-            assert_eq!(iter.next().map(Entry::value), Some(&5678));
-            assert_eq!(iter.next().map(Entry::value), None);
+            list.iter(|mut iter| {
+                assert_eq!(iter.next().map(Entry::value), Some(&&mut 1234));
+                let _a = entry1;
+                let _b = entry2;
+                assert_eq!(iter.next().map(Entry::value), Some(&&mut 5678));
+                assert_eq!(iter.next().map(Entry::value), None);
+            });
         });
     }
 }

@@ -1,31 +1,25 @@
-use core::ptr::NonNull;
+use core::ptr::{addr_of, NonNull};
 
-use super::Entry;
+use super::{Entry, Link};
 
 #[repr(transparent)]
-#[derive(Debug)]
-pub struct EntryPtr<T: ?Sized>(NonNull<Entry<T>>);
+#[derive(Debug, Clone, Copy)]
+pub struct EntryPtr(NonNull<Entry<()>>);
 
-impl<T: ?Sized> EntryPtr<T> {
-    pub fn new(node: &Entry<T>) -> Self {
-        Self(NonNull::from(node))
+impl EntryPtr {
+    pub fn new<T>(node: &Entry<T>) -> Self {
+        Self(NonNull::from(node).cast())
     }
 
-    #[inline]
-    pub unsafe fn as_ref(&self) -> &Entry<T> {
-        self.as_extended_ref()
+    pub unsafe fn get_extended_ref<'a, T>(self) -> &'a Entry<T> {
+        self.0.cast().as_ref()
     }
 
-    pub unsafe fn as_extended_ref<'a>(self) -> &'a Entry<T> {
-        // Original reference was pinned
-        self.0.as_ref()
+    pub unsafe fn as_ref<T>(&self) -> &Entry<T> {
+        self.0.cast().as_ref()
     }
-}
 
-impl<T: ?Sized> Clone for EntryPtr<T> {
-    fn clone(&self) -> Self {
-        *self
+    pub unsafe fn link(&self) -> &Link {
+        &*addr_of!((*self.0.as_ptr()).link)
     }
 }
-
-impl<T: ?Sized> Copy for EntryPtr<T> {}

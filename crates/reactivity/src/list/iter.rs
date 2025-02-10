@@ -1,38 +1,23 @@
 use core::marker::PhantomData;
 
-use super::{Entry, EntryPtr, List};
+use super::{raw, Entry};
 
 #[derive(Debug)]
-pub struct Iter<'a, T: ?Sized> {
-    next: Option<EntryPtr<T>>,
-    _ph: PhantomData<&'a Entry<T>>,
+pub struct Iter<'a, T> {
+    inner: raw::iter::Iter<'a>,
+    _ph: PhantomData<T>,
 }
 
-impl<'a, T: ?Sized> Iterator for Iter<'a, T> {
-    type Item = &'a Entry<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.next {
-            Some(next) => {
-                let entry = unsafe { next.as_extended_ref::<'a>() };
-                self.next = entry.next.get();
-                Some(entry)
-            }
-
-            None => None,
-        }
-    }
-}
-
-impl<'a, T: ?Sized> IntoIterator for &'a List<T> {
-    type Item = &'a Entry<T>;
-
-    type IntoIter = Iter<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            next: self.start(),
+impl<'a, T> Iter<'a, T> {
+    #[doc(hidden)]
+    pub unsafe fn from(raw: raw::iter::Iter<'a>) -> Self {
+        Self {
+            inner: raw,
             _ph: PhantomData,
         }
+    }
+
+    pub fn next(&mut self) -> Option<&Entry<T>> {
+        Some(unsafe { self.inner.next()?.get_extended_ref() })
     }
 }

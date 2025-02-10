@@ -3,22 +3,24 @@ use core::pin::Pin;
 use pin_project::pin_project;
 
 use crate::{
+    define_safe_list,
     effect::{Binding, TrackerBinding},
-    list::List,
     queue::Queue,
 };
+
+define_safe_list!(pub(crate) TrackerList = TrackerBinding);
 
 #[pin_project]
 #[derive(Debug)]
 pub struct DependencyTracker {
     #[pin]
-    dependents: List<TrackerBinding>,
+    dependents: TrackerList,
 }
 
 impl DependencyTracker {
     pub fn new() -> Self {
         Self {
-            dependents: List::new(),
+            dependents: TrackerList::new(),
         }
     }
 
@@ -30,13 +32,15 @@ impl DependencyTracker {
 
     pub fn notify(self: Pin<&Self>, queue: Pin<&Queue>) {
         self.project_ref().dependents.take(|dependents| {
-            for dependent in dependents.iter() {
-                let queue_entry = dependent.value_pinned().get_ref().get();
+            dependents.iter(|mut iter| {
+                while let Some(dependent) = iter.next() {
+                    let queue_entry = unsafe { dependent.value_pinned().get().as_ref() };
 
-                if !queue_entry.linked() {
-                    queue.add(queue_entry);
+                    if !queue_entry.linked() {
+                        queue.add(queue_entry);
+                    }
                 }
-            }
+            });
         });
     }
 }

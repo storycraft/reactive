@@ -6,22 +6,22 @@ use core::{
 
 use pin_project::pin_project;
 
-use crate::{
-    effect::EffectFnPtr, list::{Entry, List}
-};
+use crate::{define_safe_list, effect::EffectFnPtr, list::Entry};
+
+define_safe_list!(EffectFnList = EffectFnPtr);
 
 #[pin_project]
 pub struct Queue {
     waker: Cell<Option<Waker>>,
     #[pin]
-    updates: List<EffectFnPtr>,
+    updates: EffectFnList,
 }
 
 impl Queue {
     pub fn new(waker: Option<Waker>) -> Self {
         Self {
             waker: Cell::new(waker),
-            updates: List::new(),
+            updates: EffectFnList::new(),
         }
     }
 
@@ -32,9 +32,18 @@ impl Queue {
     pub fn run(self: Pin<&Self>, waker: &Waker) {
         let this = self.project_ref();
 
-        while let Some(entry) = this.updates.iter().next() {
-            entry.unlink();
-            entry.value().call();
+        loop {
+            if !this.updates.iter(|mut iter| {
+                if let Some(entry) = iter.next() {
+                    entry.unlink();
+                    entry.value().call();
+                    true
+                } else {
+                    false
+                }
+            }) {
+                break;
+            }
         }
 
         if let Some(current) = self.waker.take() {

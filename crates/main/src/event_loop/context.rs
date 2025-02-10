@@ -3,18 +3,20 @@ use std::rc::Rc;
 
 use async_executor::LocalExecutor;
 use pin_project::pin_project;
-use reactivity::{list::List, queue::Queue};
+use reactivity::{define_safe_list, queue::Queue};
 use scoped_tls_hkt::scoped_thread_local;
 
-use super::handler::HandlerKey;
+use super::handler::EventHandler;
 
 scoped_thread_local!(static CX: Pin<Rc<AppCx>>);
+
+define_safe_list!(pub HandlerList = Pin<&dyn EventHandler>);
 
 #[pin_project]
 pub struct AppCx {
     executor: LocalExecutor<'static>,
     #[pin]
-    handlers: List<HandlerKey>,
+    handlers: HandlerList,
     #[pin]
     queue: Queue,
 }
@@ -23,7 +25,7 @@ impl AppCx {
     pub fn new(waker: Option<Waker>) -> Self {
         Self {
             executor: LocalExecutor::new(),
-            handlers: List::new(),
+            handlers: HandlerList::new(),
             queue: Queue::new(waker),
         }
     }
@@ -32,7 +34,7 @@ impl AppCx {
         &self.executor
     }
 
-    pub fn handlers(self: Pin<&Self>) -> Pin<&List<HandlerKey>> {
+    pub fn handlers(self: Pin<&Self>) -> Pin<&HandlerList> {
         self.project_ref().handlers
     }
 

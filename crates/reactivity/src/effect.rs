@@ -1,10 +1,5 @@
 use core::{
-    array,
-    cell::{Cell, UnsafeCell},
-    future::{pending, Future},
-    pin::{pin, Pin},
-    ptr::NonNull,
-    task::Context,
+    array, cell::{Cell, UnsafeCell}, future::{pending, Future}, pin::{pin, Pin}, ptr::NonNull, task::Context
 };
 
 use noop_waker::noop_waker;
@@ -30,7 +25,7 @@ pub struct Binding {
 impl Binding {
     pub(crate) fn new() -> Self {
         Self {
-            to_tracker: Node::new(TrackerBinding::new(NonNull::dangling())),
+            to_tracker: Node::new(TrackerBinding::new()),
         }
     }
 
@@ -103,21 +98,15 @@ pub fn effect<const BINDINGS: usize>(
             let bindings = pin!(BindingArray::<BINDINGS>::new());
             let bindings = bindings.into_ref();
 
-            let f = pin!(Aliasable::new(UnsafeCell::new(|| f(bindings))));
-            let f = f.into_ref().get().get();
+            let f = pin!(Aliasable::new(UnsafeCell::new(|| {f(bindings)})));
+            let f = f.into_ref().get().get() as *mut dyn FnMut();
 
-            let to_queue = pin!(Node::new(EffectFnPtr(f as *mut _)));
+            let to_queue = pin!(Node::new(EffectFnPtr(f)));
             let to_queue = to_queue.into_ref();
 
             for binding in bindings.iter() {
-                // This pointer is valid as long as EffectHandle alives
-                binding
-                    .to_tracker()
-                    .value()
-                    .0
-                    .set(NonNull::from(to_queue.entry()));
+                binding.to_tracker().value().0.set(NonNull::from(to_queue.entry()));
             }
-
             to_queue.entry().value().call();
 
             // Freeze forever here
@@ -128,10 +117,12 @@ pub fn effect<const BINDINGS: usize>(
 
 #[repr(transparent)]
 #[derive(Debug)]
+/// Self contained Effect fn pointer
 pub(crate) struct EffectFnPtr(*mut dyn FnMut());
 
 impl EffectFnPtr {
     pub fn call(&self) {
+        // SAFETY: pointer is always valid since entry is self referential with pointee
         unsafe { (&mut *self.0)() }
     }
 }
@@ -143,11 +134,11 @@ type EffectFnPtrEntry = Entry<EffectFnPtr>;
 pub(crate) struct TrackerBinding(Cell<NonNull<EffectFnPtrEntry>>);
 
 impl TrackerBinding {
-    pub const fn new(inner: NonNull<EffectFnPtrEntry>) -> Self {
-        Self(Cell::new(inner))
+    pub const fn new() -> Self {
+        Self(Cell::new(NonNull::dangling()))
     }
 
-    pub fn get(&self) -> &Entry<EffectFnPtr> {
-        unsafe { self.0.get().as_ref() }
+    pub fn get(&self) -> NonNull<EffectFnPtrEntry> {
+        self.0.get()
     }
 }

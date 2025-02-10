@@ -22,7 +22,7 @@ use glutin::{
 };
 use glutin_winit::{finalize_window, DisplayBuilder, GlWindow};
 use pin_project::pin_project;
-use reactivity::let_effect;
+use reactivity::{let_effect, list::Node};
 use skia_safe::{
     gpu::{
         self, backend_render_targets,
@@ -38,10 +38,7 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-use crate::{
-    event_loop::handler::{EventHandler, HandlerKey},
-    state::StateRefCell,
-};
+use crate::{event_loop::{context::AppCx, handler::EventHandler}, state::StateRefCell};
 
 #[derive(Debug)]
 #[pin_project]
@@ -75,20 +72,23 @@ impl SkiaWindow {
         self: Pin<&'a Self>,
         f: impl FnOnce(Pin<&'a Ui>) -> Fut,
     ) -> Fut::Output {
-        HandlerKey::register(self, async move {
-            let this = self.project_ref();
+        let node = pin!(Node::new(self as Pin<&dyn EventHandler>));
 
-            let_effect!(|| {
-                this.ui.tracked($);
+        AppCx::with(|cx| {
+            cx.as_ref().handlers().push_front(node.into_ref().entry());
+        });
 
-                if let Some(window) = &*this.window.get_untracked() {
-                    window.request_redraw();
-                }
-            });
+        let this = self.project_ref();
 
-            this.ui.run(f).await
-        })
-        .await
+        let_effect!(|| {
+            this.ui.tracked($);
+
+            if let Some(window) = &*this.window.get_untracked() {
+                window.request_redraw();
+            }
+        });
+
+        this.ui.run(f).await
     }
 
     fn process_window_events(self: Pin<&Self>, event: &mut WindowEvent) {

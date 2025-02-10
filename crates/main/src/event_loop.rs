@@ -41,9 +41,11 @@ where
             let cx = self.cx.as_ref();
             let queue = cx.queue();
             if !queue.is_empty() {
-                for handler in cx.handlers().iter() {
-                    handler.value().with(|handler| handler.request_redraw());
-                }
+                cx.handlers().iter(|mut iter| {
+                    while let Some(handler) = iter.next() {
+                        handler.value().request_redraw();
+                    }
+                });
             }
             queue.run(&self.waker);
 
@@ -58,38 +60,38 @@ where
 {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         AppCx::set(&self.cx, || {
-            for entry in self.cx.as_ref().handlers().iter() {
-                entry.value().with(|handler| handler.resumed(el));
-            }
+            self.cx.as_ref().handlers().iter(|mut iter| {
+                while let Some(entry) = iter.next() {
+                    entry.value().resumed(el);
+                }
+            });
         });
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
         AppCx::set(&self.cx, || {
-            for entry in self.cx.as_ref().handlers().iter() {
-                if entry.value().with(|handler| {
+            self.cx.as_ref().handlers().iter(|mut iter| {
+                while let Some(entry) = iter.next() {
+                    let handler = entry.value();
                     if handler
                         .window_id()
                         .map(|id| id == window_id)
                         .unwrap_or(false)
                     {
                         handler.on_window_event(el, &mut event);
-                        true
-                    } else {
-                        false
                     }
-                }) {
-                    break;
                 }
-            }
+            });
         });
     }
 
     fn suspended(&mut self, el: &ActiveEventLoop) {
         AppCx::set(&self.cx, || {
-            for entry in self.cx.as_ref().handlers().iter() {
-                entry.value().with(|handler| handler.suspended(el));
-            }
+            self.cx.as_ref().handlers().iter(|mut iter| {
+                while let Some(entry) = iter.next() {
+                    entry.value().suspended(el);
+                }
+            });
         });
     }
 
