@@ -195,8 +195,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let list = pin!(List::new());
-        let list = list.into_ref();
+        let mut list = pin!(List::new());
         let list2 = pin!(List::new());
         let list2 = list2.into_ref();
 
@@ -204,14 +203,16 @@ mod tests {
         let node2 = pin!(Node::new(5678));
         let entry1 = node1.into_ref().entry();
         let entry2 = node2.into_ref().entry();
-        list.push_front(entry2);
-        list.push_front(entry1);
+        list.as_ref().push_front(entry2);
+        list.as_ref().push_front(entry1);
+
+        let list = list.as_mut();
 
         list2.push_front(entry1);
         entry1.unlink();
-        list.push_front(entry1);
+        list.as_ref().push_front(entry1);
 
-        list.take(|list| {
+        list.as_ref().take(|list| {
             let mut iter = list.iter();
             assert_eq!(iter.next().map(Entry::value), Some(&1234));
             let _a = entry1;

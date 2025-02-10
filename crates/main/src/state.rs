@@ -6,7 +6,7 @@ use core::{
 
 use pin_project::pin_project;
 
-use reactivity::{binding::Binding, tracker::DependencyTracker};
+use reactivity::{effect::Binding, tracker::DependencyTracker};
 
 use crate::event_loop::context::AppCx;
 

@@ -5,7 +5,7 @@ use core::{
 
 use pin_project::pin_project;
 use reactivity::{
-    binding::Binding,
+    effect::Binding,
     list::{List, Node},
     tracker::DependencyTracker,
 };

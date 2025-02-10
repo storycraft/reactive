@@ -1,7 +1,7 @@
 use core::{future::Future, pin::Pin};
 use std::rc::Rc;
 
-use reactivity::binding::Binding;
+use reactivity::effect::Binding;
 
 use crate::{event_loop::context::AppCx, state::StateCell};
 

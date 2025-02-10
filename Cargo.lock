@@ -889,6 +889,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "noop-waker"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56902c3f29ce7afbecc1d088dfd2e3108033f3c02041c70788ed94280a3d5261"
+
+[[package]]
 name = "num_enum"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1333,6 +1339,7 @@ name = "reactivity"
 version = "0.1.0"
 dependencies = [
  "derive_more",
+ "noop-waker",
  "pin-project",
  "pinned-aliasable",
  "pollster",

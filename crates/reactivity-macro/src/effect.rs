@@ -13,13 +13,13 @@ impl EffectDef {
 }
 
 struct BindingGen<'a> {
-    list_ident: &'a Ident,
+    array_ident: &'a Ident,
     bindings: usize,
 }
 
 impl<'a> BindingGen<'a> {
     fn check(&mut self, buf: &mut TokenStream, stream: TokenStream) {
-        let binding_list = self.list_ident;
+        let binding_array = self.array_ident;
 
         for tt in stream {
             match tt {
@@ -27,11 +27,9 @@ impl<'a> BindingGen<'a> {
                     let index = self.bindings;
                     self.bindings += 1;
 
-                    // structural pinning
                     buf.extend(quote!(
-                    unsafe {
-                        ::core::pin::Pin::new_unchecked(&#binding_list[#index])
-                    }));
+                        #binding_array.get_const::<#index>()
+                    ));
                 }
 
                 TokenTree::Group(group) => {
@@ -52,7 +50,7 @@ impl<'a> BindingGen<'a> {
 
     fn transform(ident: &'a Ident, stream: TokenStream) -> (usize, TokenStream) {
         let mut this = Self {
-            list_ident: ident,
+            array_ident: ident,
             bindings: 0,
         };
 
@@ -65,18 +63,13 @@ impl<'a> BindingGen<'a> {
 
 pub fn gen(EffectDef { closure }: EffectDef) -> TokenStream {
     let effect = Ident::new("_effect", Span::mixed_site());
-    let bindings = Ident::new("_bindings", Span::mixed_site());
+    let bindings = Ident::new("bindings", Span::mixed_site());
     let (len, tokens) = BindingGen::transform(&bindings, closure);
 
     quote!(
-        let #bindings = ::core::pin::pin!(
-            ::reactivity::__private::bindings::<#len>()
-        );
-        let #bindings = #bindings.into_ref();
-        let #effect = &mut { #tokens };
         let #effect = ::core::pin::pin!(
-            ::reactivity::effect::Effect::new(#effect)
+            ::reactivity::effect::effect::<#len>(|#bindings| ({ #tokens })())
         );
-        ::reactivity::__private::init_effect(#effect, #bindings);
+        ::reactivity::effect::Effect::init(#effect);
     )
 }

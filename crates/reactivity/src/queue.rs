@@ -7,15 +7,14 @@ use core::{
 use pin_project::pin_project;
 
 use crate::{
-    effect::handle::EffectFn,
-    list::{Entry, List},
+    effect::EffectFnPtr, list::{Entry, List}
 };
 
 #[pin_project]
 pub struct Queue {
     waker: Cell<Option<Waker>>,
     #[pin]
-    updates: List<EffectFn>,
+    updates: List<EffectFnPtr>,
 }
 
 impl Queue {
@@ -48,7 +47,7 @@ impl Queue {
         self.waker.set(Some(waker.clone()));
     }
 
-    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<EffectFn>) {
+    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<EffectFnPtr>) {
         self.project_ref().updates.push_front(entry);
         if let Some(waker) = self.waker.take() {
             waker.wake();
