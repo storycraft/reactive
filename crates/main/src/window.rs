@@ -182,10 +182,9 @@ impl EventHandler for SkiaWindow {
 
     fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
         let this = self.project_ref();
-        this.window.set(None);
-
         this.state
             .replace(this.state.replace(WindowState::Invalid).suspend());
+        this.window.set(None);
     }
 
     fn on_window_event(self: Pin<&Self>, el: &ActiveEventLoop, event: &mut WindowEvent) {
