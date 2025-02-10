@@ -19,8 +19,9 @@ use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let _guard = rt.enter();
     run(async_main());
 }
 
