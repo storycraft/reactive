@@ -5,8 +5,9 @@ use core::{
     time::Duration,
 };
 
+use futures::join;
 use rand::random_range;
-use reactive::{taffy::Style, window::GuiWindow, wrap_element, Element, Component};
+use reactive::{taffy::Style, window::GuiWindow, with_children, wrap_element, Element, SetupFn, SetupFnWithChild, SetupFnWithChildExt};
 use reactivity::let_effect;
 use reactivity_winit::{resource::Resource, run, state::StateCell};
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
@@ -60,7 +61,10 @@ async fn async_main() {
     });
 
     win.show(|ui| async move {
-        block(BlockProp { x, y }).show(ui).await;
+        join!(
+            block(BlockProp { x, y }).show(ui),
+            block(BlockProp { x, y }).show(ui)
+        );
     })
     .await;
 }
@@ -70,22 +74,25 @@ pub struct BlockProp<'a> {
     y: Pin<&'a StateCell<f64>>,
 }
 
-pub fn block<'a>(prop: BlockProp<'a>) -> impl Component<'a> {
-    wrap_element(
-        Style::DEFAULT,
-        Block::new(),
-        move |_ui, element| async move {
-            let_effect!(|| {
-                element.x.set(prop.x.get($));
-            });
-
-            let_effect!(|| {
-                element.y.set(prop.y.get($));
-            });
-
-            pending::<()>().await;
-        },
-    )
+pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChild<'a, Child> {
+    with_children::<Child, _>(move |child| {
+        wrap_element(
+            Style::DEFAULT,
+            Block::new(),
+            move |ui, element| async move {
+                let_effect!(|| {
+                    element.x.set(prop.x.get($));
+                });
+    
+                let_effect!(|| {
+                    element.y.set(prop.y.get($));
+                });
+    
+                child.show(ui).await;
+                pending::<()>().await;
+            },
+        )
+    })
 }
 
 #[derive(Debug)]

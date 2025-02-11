@@ -11,10 +11,10 @@ use std::rc::Rc;
 use taffy::{NodeId, Style};
 use window::ui::Ui;
 
-/// Representation of a component.
-/// 
+/// Representation of a functional component.
+///
 /// This trait is implemented for all `FnOnce(Ui<'a>) -> impl Future + 'a` types.
-pub trait Component<'a>
+pub trait SetupFn<'a>
 where
     Self: 'a,
 {
@@ -23,7 +23,8 @@ where
     fn show(self, ui: Ui<'a>) -> impl Future<Output = Self::Output> + 'a;
 }
 
-impl<'a, F, Fut> Component<'a> for F
+// For function components without children
+impl<'a, F, Fut> SetupFn<'a> for F
 where
     F: FnOnce(Ui<'a>) -> Fut + 'a,
     Fut: Future + 'a,
@@ -31,8 +32,57 @@ where
     type Output = Fut::Output;
 
     fn show(self, ui: Ui<'a>) -> impl Future<Output = Self::Output> + 'a {
-        (self)(ui)
+        self(ui)
     }
+}
+
+impl<'a> SetupFn<'a> for () {
+    type Output = ();
+
+    fn show(self, _: Ui<'a>) -> impl Future<Output = Self::Output> + 'a {
+        async {}
+    }
+}
+
+/// Representation of a functional component with a child
+pub trait SetupFnWithChild<'a, Child> {
+    type Output;
+
+    fn child(self, child: Child) -> impl SetupFn<'a, Output = Self::Output>;
+}
+
+impl<'a, F, Child, Fut> SetupFnWithChild<'a, Child> for F
+where
+    F: FnOnce(Ui<'a>, Child) -> Fut + 'a,
+    Child: SetupFn<'a>,
+    Fut: Future + 'a,
+{
+    type Output = Fut::Output;
+
+    fn child(self, child: Child) -> impl SetupFn<'a, Output = Fut::Output> {
+        |ui| self(ui, child)
+    }
+}
+
+#[easy_ext::ext(SetupFnWithChildExt)]
+pub impl<'a, F> F
+where
+    F: SetupFnWithChild<'a, ()>,
+{
+    fn show(self, ui: Ui<'a>) -> impl Future<Output = F::Output> + 'a {
+        self.child(()).show(ui)
+    }
+}
+
+/// Wrap functional component with a child
+pub fn with_children<'a, Child, C>(
+    f: impl FnOnce(Child) -> C + 'a,
+) -> impl SetupFnWithChild<'a, Child>
+where
+    C: SetupFn<'a> + 'a,
+    Child: SetupFn<'a>,
+{
+    |ui, child| f(child).show(ui)
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -55,7 +105,7 @@ pub fn wrap_element<'a, T, Fut>(
     default_layout: Style,
     element: T,
     f: impl FnOnce(Ui<'a>, Pin<Rc<T>>) -> Fut + 'a,
-) -> impl Component<'a>
+) -> impl SetupFn<'a>
 where
     T: Element + 'static,
     Fut: Future + 'a,
