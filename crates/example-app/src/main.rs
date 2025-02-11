@@ -6,7 +6,7 @@ use core::{
 };
 
 use rand::random_range;
-use reactive::{taffy::Style, window::GuiWindow, wrap_element, Element, SetupFn};
+use reactive::{taffy::Style, window::GuiWindow, wrap_element, Element, Component};
 use reactivity::let_effect;
 use reactivity_winit::{resource::Resource, run, state::StateCell};
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
@@ -70,7 +70,7 @@ pub struct BlockProp<'a> {
     y: Pin<&'a StateCell<f64>>,
 }
 
-pub fn block<'a>(prop: BlockProp<'a>) -> impl SetupFn<'a> {
+pub fn block<'a>(prop: BlockProp<'a>) -> impl Component<'a> {
     wrap_element(
         Style::DEFAULT,
         Block::new(),

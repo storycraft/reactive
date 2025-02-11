@@ -21,7 +21,7 @@ use skia_safe::Color;
 use state::{Context, WindowState};
 use ui::Ui;
 
-use crate::{tree::Tree, SetupFn};
+use crate::{tree::Tree, Component};
 
 #[derive(Debug)]
 #[pin_project]
@@ -53,7 +53,7 @@ impl GuiWindow {
 
     pub async fn show<'a, F>(self: Pin<&'a Self>, f: F) -> F::Output
     where
-        F: SetupFn<'a>,
+        F: Component<'a>,
     {
         handler::add(self, f.show(Ui::root(&self.get_ref().ui))).await
     }

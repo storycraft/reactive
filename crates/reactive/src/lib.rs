@@ -11,7 +11,10 @@ use std::rc::Rc;
 use taffy::{NodeId, Style};
 use window::ui::Ui;
 
-pub trait SetupFn<'a>
+/// Representation of a component.
+/// 
+/// This trait is implemented for all `FnOnce(Ui<'a>) -> impl Future + 'a` types.
+pub trait Component<'a>
 where
     Self: 'a,
 {
@@ -20,7 +23,7 @@ where
     fn show(self, ui: Ui<'a>) -> impl Future<Output = Self::Output> + 'a;
 }
 
-impl<'a, F, Fut> SetupFn<'a> for F
+impl<'a, F, Fut> Component<'a> for F
 where
     F: FnOnce(Ui<'a>) -> Fut + 'a,
     Fut: Future + 'a,
@@ -52,7 +55,7 @@ pub fn wrap_element<'a, T, Fut>(
     default_layout: Style,
     element: T,
     f: impl FnOnce(Ui<'a>, Pin<Rc<T>>) -> Fut + 'a,
-) -> impl SetupFn<'a>
+) -> impl Component<'a>
 where
     T: Element + 'static,
     Fut: Future + 'a,
