@@ -79,7 +79,11 @@ impl WindowState {
     }
 
     // TODO:: error handling
-    pub fn create_window(&mut self, el: &ActiveEventLoop, attr: &WindowAttributes) -> Option<Window> {
+    pub fn create_window(
+        &mut self,
+        el: &ActiveEventLoop,
+        attr: &WindowAttributes,
+    ) -> Option<Window> {
         let (window, gl_config, gl_cx) = match mem::replace(self, WindowState::Invalid) {
             WindowState::Uninit { builder } => {
                 let template = ConfigTemplateBuilder::new().with_alpha_size(8);

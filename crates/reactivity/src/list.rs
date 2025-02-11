@@ -85,7 +85,7 @@ macro_rules! define_safe_list {
             }
         }
     };
-    
+
     ($vis:vis $name:ident = $ty:ty) => {
         $crate::define_safe_list!($vis $name = for<> $ty);
     };

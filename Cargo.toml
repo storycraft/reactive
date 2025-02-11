@@ -10,5 +10,6 @@ license = "MIT"
 [workspace.dependencies]
 reactivity-winit = { path = "crates/reactivity-winit" }
 reactive = { path = "crates/reactive" }
+reactive-widgets = { path = "crates/reactive-widgets" }
 reactivity = { path = "crates/reactivity" }
 reactivity-macro = { path = "crates/reactivity-macro" }

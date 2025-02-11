@@ -1,23 +1,18 @@
-use core::{
-    cell::Cell,
-    future::pending,
-    pin::{pin, Pin},
-    time::Duration,
-};
+use core::{pin::pin, time::Duration};
 
 use rand::random_range;
 use reactive::{
-    taffy::{Dimension, Layout, Size, Style},
+    taffy::{Size, Style},
     window::GuiWindow,
-    with_children, wrap_element, Element, SetupFn, SetupFnWithChild, SetupFnWithChildExt,
+    SetupFnWithChildExt,
 };
+use reactive_widgets::{block, BlockProp};
 use reactivity::let_effect;
 use reactivity_winit::{
     resource::Resource,
     run,
     state::{StateCell, StateRefCell},
 };
-use skia_safe::{Canvas, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
 
 fn main() {
@@ -46,7 +41,7 @@ async fn async_main() {
 
         resource.load(async move {
             // IO heavy task
-            sleep(Duration::from_secs(5)).await;
+            sleep(Duration::from_secs(1)).await;
             input + 4
         });
     });
@@ -68,64 +63,12 @@ async fn async_main() {
     });
 
     win.show(|ui| async move {
-        block(BlockProp { layout, color }).show(ui).await;
+        block(BlockProp {
+            layout: Some(layout),
+            color: Some(color),
+        })
+        .show(ui)
+        .await;
     })
     .await;
-}
-
-pub struct BlockProp<'a> {
-    layout: Pin<&'a StateRefCell<Style>>,
-    color: Pin<&'a StateCell<u32>>,
-}
-
-pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChild<'a, Child> {
-    with_children::<Child, _>(move |child| {
-        wrap_element(
-            Style {
-                size: Size {
-                    width: Dimension::Percent(0.25),
-                    height: Dimension::Percent(0.25),
-                },
-                ..Default::default()
-            },
-            Block::new(),
-            move |ui, element| async move {
-                let_effect!(|| {
-                    element.color.set(prop.color.get($));
-                });
-
-                let_effect!(|| {
-                    ui.set_style(ui.current(), prop.layout.get($).clone());
-                });
-
-                child.show(ui).await;
-                pending::<()>().await;
-            },
-        )
-    })
-}
-
-#[derive(Debug)]
-pub struct Block {
-    pub color: Cell<u32>,
-}
-
-impl Block {
-    pub fn new() -> Self {
-        Self {
-            color: Cell::new(0xffffffff),
-        }
-    }
-}
-
-impl Element for Block {
-    fn draw(self: Pin<&Self>, canvas: &Canvas, layout: &Layout) {
-        let mut paint = Paint::new(Color4f::from(self.color.get()), None);
-        paint.set_style(PaintStyle::Fill);
-
-        canvas.draw_rect(
-            Rect::new(0.0, 0.0, layout.size.width, layout.size.height),
-            &paint,
-        );
-    }
 }

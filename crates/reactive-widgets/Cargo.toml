@@ -1,8 +1,10 @@
 [package]
-name = "reactive-primitive"
+name = "reactive-widgets"
 version.workspace = true
 edition.workspace = true
 authors = ["storycraft <storycraft@pancake.sh>"]
 license.workspace = true
 
 [dependencies]
+reactivity.workspace = true
+reactive.workspace = true

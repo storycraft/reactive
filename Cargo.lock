@@ -470,6 +470,7 @@ dependencies = [
  "pin-project",
  "rand",
  "reactive",
+ "reactive-widgets",
  "reactivity",
  "reactivity-winit",
  "skia-safe",
@@ -1470,8 +1471,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "reactive-primitive"
+name = "reactive-widgets"
 version = "0.1.0"
+dependencies = [
+ "reactive",
+ "reactivity",
+]
 
 [[package]]
 name = "reactivity"

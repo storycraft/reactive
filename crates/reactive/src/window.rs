@@ -30,8 +30,7 @@ pub struct GuiWindow {
     state: RefCell<WindowState>,
     #[pin]
     window: StateRefCell<Option<Window>>,
-    #[pin]
-    ui: Tree,
+    ui: RefCell<Tree>,
 }
 
 impl GuiWindow {
@@ -43,7 +42,7 @@ impl GuiWindow {
             state: RefCell::new(WindowState::new(builder)),
             attr,
             window: StateRefCell::new(None),
-            ui: Tree::new(),
+            ui: RefCell::new(Tree::new()),
         }
     }
 
@@ -111,20 +110,20 @@ impl WinitWindow for GuiWindow {
                     (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
                 {
                     cx.resize(width, height);
-                    this.ui.resize(width.get(), height.get());
+                    this.ui.borrow_mut().resize(width.get(), height.get());
                 }
             }
 
             WindowEvent::RedrawRequested => {
                 let canvas = cx.canvas();
                 canvas.clear(Color::BLACK);
-                this.ui.redraw(canvas);
+                this.ui.borrow_mut().redraw(canvas);
                 cx.render();
             }
 
             _ => {}
         }
 
-        this.ui.window_event(el, event);
+        this.ui.borrow().window_event(el, event);
     }
 }

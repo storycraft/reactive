@@ -6,9 +6,10 @@ authors = ["storycraft <storycraft@pancake.sh>"]
 license.workspace = true
 
 [dependencies]
+reactivity.workspace = true
 reactivity-winit.workspace = true
 reactive.workspace = true
-reactivity.workspace = true
+reactive-widgets.workspace = true
 
 winit = "0.30.9"
 glutin-winit = "0.5.0"

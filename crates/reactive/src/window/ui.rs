@@ -1,5 +1,4 @@
-use core::pin::Pin;
-use std::rc::Rc;
+use core::{cell::RefCell, pin::Pin};
 
 use taffy::Style;
 
@@ -7,49 +6,63 @@ use crate::{tree::Tree, Element, ElementId};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Ui<'a> {
-    tree: &'a Tree,
+    tree: &'a RefCell<Tree>,
     current: ElementId,
 }
 
 impl<'a> Ui<'a> {
-    pub fn new(tree: &'a Tree, current: ElementId) -> Self {
+    pub const fn new(tree: &'a RefCell<Tree>, current: ElementId) -> Self {
         Self { tree, current }
     }
 
-    pub fn root(tree: &'a Tree) -> Self {
-        Self {
-            tree,
-            current: tree.root(),
-        }
+    pub fn root(tree: &'a RefCell<Tree>) -> Self {
+        let current = tree.borrow().root();
+        Self::new(tree, current)
     }
 
-    pub fn tree(&self) -> &'a Tree {
-        self.tree
+    pub fn sub_ui(&self, child: ElementId) -> Ui<'a> {
+        Self::new(self.tree, child)
     }
 
-    pub fn current(&self) -> ElementId {
+    pub fn current_id(&self) -> ElementId {
         self.current
     }
 
-    pub fn append<T>(&self, layout: Style, element: T) -> (ElementId, Pin<Rc<T>>)
+    pub fn append<T>(&self, layout: Style, element: T) -> ElementId
     where
         T: Element + 'static,
     {
-        let (id, element) = self.tree.create(layout, element);
-        self.tree.append(self.current, id);
+        let mut tree = self.tree.borrow_mut();
+        let id = tree.create(layout, element);
+        tree.append(self.current, id);
+        id
+    }
 
-        (id, element)
+    pub fn with_ref<T: Element, R>(
+        &self,
+        id: ElementId,
+        f: impl FnOnce(Pin<&T>) -> R,
+    ) -> Option<R> {
+        Some(f(self.tree.borrow().get(id)?))
+    }
+
+    pub fn with_mut<T: Element, R>(
+        &self,
+        id: ElementId,
+        f: impl FnOnce(Pin<&mut T>) -> R,
+    ) -> Option<R> {
+        Some(f(self.tree.borrow_mut().get_mut(id)?))
     }
 
     pub fn remove_child(&self, id: ElementId) {
-        self.tree.remove_child(self.current, id)
+        self.tree.borrow_mut().remove_child(self.current, id)
     }
 
     pub fn remove(&self, id: ElementId) {
-        self.tree.remove(id)
+        self.tree.borrow_mut().remove(id)
     }
 
     pub fn set_style(&self, id: ElementId, style: Style) {
-        self.tree.set_style(id, style);
+        self.tree.borrow_mut().set_style(id, style);
     }
 }

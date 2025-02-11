@@ -1,13 +1,19 @@
 pub(crate) mod tree;
 pub mod window;
 
+pub use reactivity_winit;
+pub use reactivity_winit::winit;
+pub use skia_safe;
 pub use taffy;
 
-use core::{future::Future, pin::Pin};
+use core::{
+    any::{Any, TypeId},
+    future::Future,
+    pin::Pin,
+};
 use reactivity_winit::winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 use scopeguard::defer;
 use skia_safe::Canvas;
-use std::rc::Rc;
 use taffy::{AvailableSpace, Layout, NodeId, Size, Style};
 use window::ui::Ui;
 
@@ -87,6 +93,7 @@ where
 #[repr(transparent)]
 pub struct ElementId(NodeId);
 
+/// Smallest draw unit with a layout
 pub trait Element: 'static {
     fn on_event(self: Pin<&Self>, _el: &ActiveEventLoop, _event: &mut WindowEvent) {}
 
@@ -109,19 +116,43 @@ pub trait Element: 'static {
     fn post_child_draw(self: Pin<&Self>, _canvas: &Canvas) {}
 }
 
+impl dyn Element {
+    pub(crate) fn downcast_ref<T: Element>(self: Pin<&Self>) -> Option<Pin<&T>> {
+        let tid = self.as_ref().get_ref().type_id();
+
+        if tid == TypeId::of::<T>() {
+            Some(unsafe { self.map_unchecked(move |el| &*(el as *const dyn Element as *const T)) })
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn downcast_mut<T: Element>(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
+        let tid = self.as_ref().get_ref().type_id();
+
+        if tid == TypeId::of::<T>() {
+            Some(unsafe {
+                self.map_unchecked_mut(move |el| &mut *(el as *mut dyn Element as *mut T))
+            })
+        } else {
+            None
+        }
+    }
+}
+
 pub fn wrap_element<'a, T, Fut>(
     default_layout: Style,
     element: T,
-    f: impl FnOnce(Ui<'a>, Pin<Rc<T>>) -> Fut + 'a,
-) -> impl SetupFn<'a>
+    f: impl FnOnce(Ui<'a>) -> Fut + 'a,
+) -> impl SetupFn<'a, Output = Fut::Output>
 where
     T: Element + 'static,
     Fut: Future + 'a,
 {
     move |ui: Ui<'a>| async move {
-        let (id, element) = ui.append(default_layout, element);
+        let id = ui.append(default_layout, element);
         defer!(ui.remove(id));
 
-        f(Ui::new(ui.tree(), id), element).await
+        f.show(ui.sub_ui(id)).await
     }
 }

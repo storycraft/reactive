@@ -1,5 +1,10 @@
 use core::{
-    array, cell::{Cell, UnsafeCell}, future::{pending, Future}, pin::{pin, Pin}, ptr::NonNull, task::Context
+    array,
+    cell::{Cell, UnsafeCell},
+    future::{pending, Future},
+    pin::{pin, Pin},
+    ptr::NonNull,
+    task::Context,
 };
 
 use noop_waker::noop_waker;
@@ -98,14 +103,18 @@ pub fn effect<const BINDINGS: usize>(
             let bindings = pin!(BindingArray::<BINDINGS>::new());
             let bindings = bindings.into_ref();
 
-            let f = pin!(Aliasable::new(UnsafeCell::new(|| {f(bindings)})));
+            let f = pin!(Aliasable::new(UnsafeCell::new(|| { f(bindings) })));
             let f = f.into_ref().get().get() as *mut dyn FnMut();
 
             let to_queue = pin!(Node::new(EffectFnPtr(f)));
             let to_queue = to_queue.into_ref();
 
             for binding in bindings.iter() {
-                binding.to_tracker().value().0.set(NonNull::from(to_queue.entry()));
+                binding
+                    .to_tracker()
+                    .value()
+                    .0
+                    .set(NonNull::from(to_queue.entry()));
             }
             to_queue.entry().value().call();
 
