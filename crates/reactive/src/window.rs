@@ -106,13 +106,14 @@ impl WinitWindow for GuiWindow {
         };
 
         match event {
-            WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
-                cx.resize(
-                    NonZeroU32::new(size.width).unwrap(),
-                    NonZeroU32::new(size.height).unwrap(),
-                );
+            WindowEvent::Resized(size) => {
+                if let (Some(width), Some(height)) =
+                    (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
+                {
+                    cx.resize(width, height);
 
-                this.ui.resize(size.width, size.height);
+                    this.ui.resize(width.get(), height.get());
+                }
             }
 
             WindowEvent::RedrawRequested => {

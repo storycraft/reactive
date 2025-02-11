@@ -116,7 +116,7 @@ impl Tree {
                 let cx = cx.as_ref();
 
                 canvas.translate((layout.location.x, layout.location.y));
-                cx.draw(canvas, layout.size.width, layout.size.height);
+                cx.draw(canvas, layout);
 
                 cx.pre_child_draw(canvas);
                 redraw_inner(canvas, taffy, child);
@@ -129,12 +129,13 @@ impl Tree {
         let (width, height) = self.size.get();
         let taffy = &mut *self.taffy.borrow_mut();
         taffy
-            .compute_layout(
+            .compute_layout_with_measure(
                 self.root.0,
                 Size {
                     width: AvailableSpace::Definite(width as _),
                     height: AvailableSpace::Definite(height as _),
                 },
+                measure_element,
             )
             .unwrap();
 
@@ -146,4 +147,20 @@ impl Default for Tree {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn measure_element(
+    known_dimensions: Size<Option<f32>>,
+    available_space: Size<AvailableSpace>,
+    _: NodeId,
+    node_context: Option<&mut Pin<Rc<dyn Element>>>,
+    style: &Style,
+) -> Size<f32> {
+    let Some(node_context) = node_context else {
+        return Size::ZERO;
+    };
+
+    node_context
+        .as_ref()
+        .measure(known_dimensions, available_space, style)
 }

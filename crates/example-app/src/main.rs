@@ -7,7 +7,7 @@ use core::{
 
 use rand::random_range;
 use reactive::{
-    taffy::{Dimension, Size, Style},
+    taffy::{Dimension, Layout, Size, Style},
     window::GuiWindow,
     with_children, wrap_element, Element, SetupFn, SetupFnWithChild, SetupFnWithChildExt,
 };
@@ -119,10 +119,13 @@ impl Block {
 }
 
 impl Element for Block {
-    fn draw(self: Pin<&Self>, canvas: &Canvas, width: f32, height: f32) {
+    fn draw(self: Pin<&Self>, canvas: &Canvas, layout: &Layout) {
         let mut paint = Paint::new(Color4f::from(self.color.get()), None);
         paint.set_style(PaintStyle::Fill);
 
-        canvas.draw_rect(Rect::new(0.0, 0.0, width, height), &paint);
+        canvas.draw_rect(
+            Rect::new(0.0, 0.0, layout.size.width, layout.size.height),
+            &paint,
+        );
     }
 }
