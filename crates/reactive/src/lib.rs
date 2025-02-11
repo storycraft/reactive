@@ -1,16 +1,11 @@
 pub(crate) mod tree;
 pub mod window;
 
-use scopeguard::defer;
 pub use taffy;
 
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
-use pin_project::{pin_project, pinned_drop};
+use core::{future::Future, pin::Pin};
 use reactivity_winit::winit::{event::WindowEvent, event_loop::ActiveEventLoop};
+use scopeguard::defer;
 use skia_safe::Canvas;
 use std::rc::Rc;
 use taffy::{NodeId, Style};
@@ -51,29 +46,6 @@ pub trait Element: 'static {
     fn pre_child_draw(self: Pin<&Self>, _canvas: &Canvas) {}
     // Called after drawing relative positioned children
     fn post_child_draw(self: Pin<&Self>, _canvas: &Canvas) {}
-}
-
-#[pin_project(PinnedDrop)]
-pub struct ElementFuture<'a, Fut> {
-    ui: Ui<'a>,
-    id: ElementId,
-    #[pin]
-    fut: Fut,
-}
-
-impl<Fut: Future> Future for ElementFuture<'_, Fut> {
-    type Output = Fut::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.project().fut.poll(cx)
-    }
-}
-
-#[pinned_drop]
-impl<Fut> PinnedDrop for ElementFuture<'_, Fut> {
-    fn drop(self: Pin<&mut Self>) {
-        self.ui.remove(self.id);
-    }
 }
 
 pub fn wrap_element<'a, T, Fut>(
