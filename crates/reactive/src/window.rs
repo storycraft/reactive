@@ -111,6 +111,8 @@ impl WinitWindow for GuiWindow {
                     NonZeroU32::new(size.width).unwrap(),
                     NonZeroU32::new(size.height).unwrap(),
                 );
+
+                this.ui.resize(size.width, size.height);
             }
 
             WindowEvent::RedrawRequested => {
