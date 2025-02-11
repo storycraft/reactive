@@ -8,6 +8,7 @@ edition = "2021"
 license = "MIT"
 
 [workspace.dependencies]
-reactive = { path = "crates/main" }
+reactivity-winit = { path = "crates/reactivity-winit" }
+reactive = { path = "crates/reactive" }
 reactivity = { path = "crates/reactivity" }
 reactivity-macro = { path = "crates/reactivity-macro" }

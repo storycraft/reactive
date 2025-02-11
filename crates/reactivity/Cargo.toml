@@ -1,9 +1,9 @@
 [package]
 name = "reactivity"
-version = { workspace = true }
-edition = { workspace = true }
+version.workspace = true
+edition.workspace = true
 authors = ["storycraft <storycraft@pancake.sh>"]
-license = { workspace = true }
+license.workspace = true
 
 [features]
 default = ["macros"]

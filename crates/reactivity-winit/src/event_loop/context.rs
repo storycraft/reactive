@@ -6,11 +6,11 @@ use pin_project::pin_project;
 use reactivity::{define_safe_list, queue::Queue};
 use scoped_tls_hkt::scoped_thread_local;
 
-use super::handler::EventHandler;
+use super::handler::WinitWindow;
 
 scoped_thread_local!(static CX: Pin<Rc<AppCx>>);
 
-define_safe_list!(pub HandlerList = Pin<&dyn EventHandler>);
+define_safe_list!(pub HandlerList = Pin<&dyn WinitWindow>);
 
 #[pin_project]
 pub struct AppCx {

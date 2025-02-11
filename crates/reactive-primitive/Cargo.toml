@@ -1,0 +1,8 @@
+[package]
+name = "reactive-primitive"
+version.workspace = true
+edition.workspace = true
+authors = ["storycraft <storycraft@pancake.sh>"]
+license.workspace = true
+
+[dependencies]

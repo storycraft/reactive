@@ -1,23 +1,16 @@
 use core::{
+    cell::Cell,
+    future::pending,
     pin::{pin, Pin},
     time::Duration,
 };
 
-use futures_lite::FutureExt;
-use pin_project::pin_project;
-use reactive::{
-    resource::Resource,
-    run,
-    state::StateCell,
-    window::{
-        element::{Element, SetupFn},
-        SkiaWindow,
-    },
-};
+use rand::random_range;
+use reactive::{taffy::Style, window::GuiWindow, wrap_element, Element, SetupFn};
 use reactivity::let_effect;
+use reactivity_winit::{resource::Resource, run, state::StateCell};
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 
 fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -26,11 +19,14 @@ fn main() {
 }
 
 async fn async_main() {
-    let main = pin!(SkiaWindow::new());
-    let main = main.into_ref();
+    let win = pin!(GuiWindow::new());
+    let win = win.into_ref();
 
-    let tracker = pin!(MouseTracker::new());
-    let tracker = tracker.into_ref();
+    let x = pin!(StateCell::new(0.0));
+    let x = x.into_ref();
+
+    let y = pin!(StateCell::new(0.0));
+    let y = y.into_ref();
 
     let input = pin!(StateCell::new(0));
     let input = input.into_ref();
@@ -52,83 +48,69 @@ async fn async_main() {
             println!("Resource loaded, value: {value}");
             input.set(value + 3);
         }
+
+        x.set(random_range(0.0..800.0));
+        y.set(random_range(0.0..600.0));
     });
 
     let_effect!(|| {
-        let x = tracker.x().get($);
-        let y = tracker.y().get($);
-
-        println!("mouse position updated to x: {x} y: {y}");
-    });
-
-    let_effect!(|| {
-        if let Some(window) = &*main.window().get($) {
+        if let Some(window) = &*win.window().get($) {
             println!("window loaded {:?}", window);
         }
     });
 
-    main.show(|ui| async move {
-        loop {
-            // blinking
-            ui.add(tracker).or(sleep(Duration::from_secs(1))).await;
-            sleep(Duration::from_secs(1)).await;
-        }
+    win.show(|ui| async move {
+        block(BlockProp { x, y }).show(ui).await;
     })
     .await;
 }
 
+pub struct BlockProp<'a> {
+    x: Pin<&'a StateCell<f64>>,
+    y: Pin<&'a StateCell<f64>>,
+}
+
+pub fn block<'a>(prop: BlockProp<'a>) -> impl SetupFn<'a> {
+    wrap_element(
+        Style::DEFAULT,
+        Block::new(),
+        move |_ui, element| async move {
+            let_effect!(|| {
+                element.x.set(prop.x.get($));
+            });
+
+            let_effect!(|| {
+                element.y.set(prop.y.get($));
+            });
+
+            pending::<()>().await;
+        },
+    )
+}
+
 #[derive(Debug)]
-#[pin_project]
-pub struct MouseTracker {
-    #[pin]
-    x: StateCell<f64>,
-    #[pin]
-    y: StateCell<f64>,
+pub struct Block {
+    pub x: Cell<f64>,
+    pub y: Cell<f64>,
 }
 
-impl Default for MouseTracker {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MouseTracker {
+impl Block {
     pub fn new() -> Self {
         Self {
-            x: StateCell::new(0.0),
-            y: StateCell::new(0.0),
+            x: Cell::new(0.0),
+            y: Cell::new(0.0),
         }
-    }
-
-    pub fn x(self: Pin<&Self>) -> Pin<&StateCell<f64>> {
-        self.project_ref().x
-    }
-
-    pub fn y(self: Pin<&Self>) -> Pin<&StateCell<f64>> {
-        self.project_ref().y
     }
 }
 
-impl Element for MouseTracker {
-    fn on_event(self: Pin<&Self>, _el: &ActiveEventLoop, event: &mut WindowEvent) {
-        if let WindowEvent::CursorMoved { position, .. } = event {
-            let this = self.project_ref();
-            this.x.set(position.x);
-            this.y.set(position.y);
-        }
-    }
-
+impl Element for Block {
     fn draw(self: Pin<&Self>, canvas: &Canvas) {
         let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
         paint.set_style(PaintStyle::Fill);
 
-        let x = self.x().get_untracked() as f32;
-        let y = self.y().get_untracked() as f32;
+        let x = self.x.get() as f32;
+        let y = self.y.get() as f32;
 
         canvas.draw_rect(Rect::new(x, y, x + 50.0, y + 50.0), &paint);
     }
-}
-
-impl SetupFn<'_> for MouseTracker {
-    type Output = ();
 }

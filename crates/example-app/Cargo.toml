@@ -1,13 +1,14 @@
 [package]
 name = "example-app"
-version = { workspace = true }
-edition = { workspace = true }
+version.workspace = true
+edition.workspace = true
 authors = ["storycraft <storycraft@pancake.sh>"]
-license = { workspace = true }
+license.workspace = true
 
 [dependencies]
-reactive = { workspace = true }
-reactivity = { workspace = true }
+reactivity-winit.workspace = true
+reactive.workspace = true
+reactivity.workspace = true
 
 winit = "0.30.9"
 glutin-winit = "0.5.0"
@@ -15,3 +16,4 @@ pin-project = "1.1.9"
 tokio = { version = "1.43.0", features = ["full"] }
 skia-safe = "0.81.0"
 futures-lite = "2.6.0"
+rand = "0.9.0"

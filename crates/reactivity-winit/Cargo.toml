@@ -1,0 +1,16 @@
+[package]
+name = "reactivity-winit"
+version.workspace = true
+edition.workspace = true
+authors = ["storycraft <storycraft@pancake.sh>"]
+license.workspace = true
+
+[dependencies]
+reactivity.workspace = true
+
+async-executor = "1.13.1"
+pin-project = "1.1.9"
+waker-fn = "1.2.0"
+winit = "0.30.9"
+derive_more = { version = "2.0.1", features = ["full"] }
+scoped-tls-hkt = "0.1.5"

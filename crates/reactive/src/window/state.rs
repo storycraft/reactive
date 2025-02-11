@@ -1,15 +1,6 @@
-pub mod element;
-
-use core::{
-    cell::RefCell,
-    ffi::CStr,
-    future::Future,
-    num::NonZeroU32,
-    pin::{pin, Pin},
-};
+use core::{ffi::CStr, mem, num::NonZeroU32};
 use std::ffi::CString;
 
-use element::{ui::Ui, Element};
 use gl::types::GLint;
 use glutin::{
     config::{Config, ConfigTemplateBuilder, GetGlConfig, GlConfig},
@@ -21,183 +12,23 @@ use glutin::{
     surface::{GlSurface, WindowSurface},
 };
 use glutin_winit::{finalize_window, DisplayBuilder, GlWindow};
-use pin_project::pin_project;
-use reactivity::{let_effect, list::Node};
+use reactivity_winit::winit::{
+    event_loop::ActiveEventLoop,
+    raw_window_handle::HasWindowHandle,
+    window::{Window, WindowAttributes, WindowId},
+};
 use skia_safe::{
     gpu::{
         self, backend_render_targets,
         gl::{FramebufferInfo, Interface},
         DirectContext, SurfaceOrigin,
     },
-    Color, ColorType,
-};
-use winit::{
-    event::WindowEvent,
-    event_loop::ActiveEventLoop,
-    raw_window_handle::HasWindowHandle,
-    window::{Window, WindowAttributes, WindowId},
+    Canvas, ColorType,
 };
 
-use crate::{event_loop::{context::AppCx, handler::EventHandler}, state::StateRefCell};
-
 #[derive(Debug)]
-#[pin_project]
-pub struct SkiaWindow {
-    attr: WindowAttributes,
-    state: RefCell<WindowState>,
-    #[pin]
-    window: StateRefCell<Option<Window>>,
-    #[pin]
-    ui: Ui,
-}
-
-impl SkiaWindow {
-    pub fn new() -> Self {
-        let attr = WindowAttributes::default();
-        let builder = DisplayBuilder::new().with_window_attributes(Some(attr.clone()));
-
-        Self {
-            state: RefCell::new(WindowState::Uninit { builder }),
-            attr,
-            window: StateRefCell::new(None),
-            ui: Ui::new(),
-        }
-    }
-
-    pub fn window(self: Pin<&Self>) -> Pin<&StateRefCell<Option<Window>>> {
-        self.project_ref().window
-    }
-
-    pub async fn show<'a, Fut: Future + 'a>(
-        self: Pin<&'a Self>,
-        f: impl FnOnce(Pin<&'a Ui>) -> Fut,
-    ) -> Fut::Output {
-        let node = pin!(Node::new(self as Pin<&dyn EventHandler>));
-
-        AppCx::with(|cx| {
-            cx.as_ref().handlers().push_front(node.into_ref().entry());
-        });
-
-        let this = self.project_ref();
-
-        let_effect!(|| {
-            this.ui.tracked($);
-
-            if let Some(window) = &*this.window.get_untracked() {
-                window.request_redraw();
-            }
-        });
-
-        this.ui.run(f).await
-    }
-
-    fn process_window_events(self: Pin<&Self>, event: &mut WindowEvent) {
-        let this = self.project_ref();
-
-        let WindowState::Init(Context {
-            gl_cx,
-            gr_cx,
-            stencil_size,
-            num_samples,
-            fb_info,
-            gl_surface,
-            skia_surface,
-            ..
-        }) = &mut *this.state.borrow_mut()
-        else {
-            return;
-        };
-
-        match event {
-            WindowEvent::Resized(size) if size.width != 0 && size.height != 0 => {
-                gl_surface.resize(
-                    gl_cx,
-                    NonZeroU32::new(size.width).unwrap(),
-                    NonZeroU32::new(size.height).unwrap(),
-                );
-                *skia_surface = create_skia_surface(
-                    (size.width as _, size.height as _),
-                    *fb_info,
-                    gr_cx,
-                    *num_samples as _,
-                    *stencil_size as _,
-                );
-            }
-
-            WindowEvent::RedrawRequested => {
-                let canvas = skia_surface.canvas();
-                canvas.clear(Color::BLACK);
-
-                this.ui.draw(canvas);
-
-                gr_cx.flush_and_submit();
-                gl_surface.swap_buffers(gl_cx).unwrap();
-            }
-
-            _ => {}
-        }
-    }
-}
-
-impl Default for SkiaWindow {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl EventHandler for SkiaWindow {
-    fn window_id(self: Pin<&Self>) -> Option<WindowId> {
-        let WindowState::Init(Context { id, .. }) = *self.project_ref().state.borrow() else {
-            return None;
-        };
-
-        Some(id)
-    }
-
-    fn request_redraw(self: Pin<&Self>) {
-        if let Some(window) = &*self.project_ref().window.get_untracked() {
-            window.request_redraw();
-        }
-    }
-
-    fn resumed(self: Pin<&Self>, el: &ActiveEventLoop) {
-        let this = self.project_ref();
-
-        // TODO:: error handling
-        let Some((window, cx)) = (match this.state.replace(WindowState::Invalid) {
-            WindowState::Invalid => {
-                println!("GlState is invalid");
-                return;
-            }
-
-            state => state.resume(el, self.attr.clone()),
-        }) else {
-            println!("Window creation failed");
-            return;
-        };
-
-        this.state.replace(WindowState::Init(cx));
-        this.window.set(Some(window));
-    }
-
-    fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
-        let this = self.project_ref();
-        this.state
-            .replace(this.state.replace(WindowState::Invalid).suspend());
-        this.window.set(None);
-    }
-
-    fn on_window_event(self: Pin<&Self>, el: &ActiveEventLoop, event: &mut WindowEvent) {
-        self.process_window_events(event);
-
-        let this = self.project_ref();
-        this.ui.on_event(el, event);
-    }
-}
-
-#[derive(Debug)]
-struct Context {
-    id: WindowId,
+pub struct Context {
+    pub id: WindowId,
 
     skia_surface: skia_safe::Surface,
     gr_cx: DirectContext,
@@ -212,8 +43,30 @@ struct Context {
     gl_surface: glutin::surface::Surface<WindowSurface>,
 }
 
+impl Context {
+    pub fn resize(&mut self, width: NonZeroU32, height: NonZeroU32) {
+        self.gl_surface.resize(&self.gl_cx, width, height);
+        self.skia_surface = create_skia_surface(
+            (width.get() as _, height.get() as _),
+            self.fb_info,
+            &mut self.gr_cx,
+            self.num_samples as _,
+            self.stencil_size as _,
+        );
+    }
+
+    pub fn canvas(&mut self) -> &Canvas {
+        self.skia_surface.canvas()
+    }
+
+    pub fn render(&mut self) {
+        self.gr_cx.flush_and_submit();
+        self.gl_surface.swap_buffers(&self.gl_cx).unwrap();
+    }
+}
+
 #[derive(Debug)]
-enum WindowState {
+pub enum WindowState {
     Uninit { builder: DisplayBuilder },
     Init(Context),
     Suspended { cx: NotCurrentContext },
@@ -221,9 +74,13 @@ enum WindowState {
 }
 
 impl WindowState {
+    pub const fn new(builder: DisplayBuilder) -> Self {
+        Self::Uninit { builder }
+    }
+
     // TODO:: error handling
-    pub fn resume(self, el: &ActiveEventLoop, attr: WindowAttributes) -> Option<(Window, Context)> {
-        let (window, gl_config, gl_cx) = match self {
+    pub fn create_window(&mut self, el: &ActiveEventLoop, attr: &WindowAttributes) -> Option<Window> {
+        let (window, gl_config, gl_cx) = match mem::replace(self, WindowState::Invalid) {
             WindowState::Uninit { builder } => {
                 let template = ConfigTemplateBuilder::new().with_alpha_size(8);
 
@@ -242,7 +99,7 @@ impl WindowState {
                 println!("Recreating window in `resumed`");
                 // Pick the config which we already use for the context.
                 let gl_config = cx.config();
-                match finalize_window(el, attr, &gl_config) {
+                match finalize_window(el, attr.clone(), &gl_config) {
                     Ok(window) => (window, gl_config, cx),
                     Err(_err) => {
                         return None;
@@ -250,7 +107,12 @@ impl WindowState {
                 }
             }
 
-            _ => {
+            state @ WindowState::Init(_) => {
+                *self = state;
+                return None;
+            }
+
+            WindowState::Invalid => {
                 return None;
             }
         };
@@ -323,19 +185,18 @@ impl WindowState {
         );
 
         let id = window.id();
-        Some((
-            window,
-            Context {
-                id,
-                gl_cx,
-                gr_cx,
-                num_samples,
-                stencil_size,
-                fb_info,
-                gl_surface,
-                skia_surface,
-            },
-        ))
+        *self = WindowState::Init(Context {
+            id,
+            gl_cx,
+            gr_cx,
+            num_samples,
+            stencil_size,
+            fb_info,
+            gl_surface,
+            skia_surface,
+        });
+
+        Some(window)
     }
 
     pub fn suspend(self) -> Self {

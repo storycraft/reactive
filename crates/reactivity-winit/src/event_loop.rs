@@ -1,4 +1,4 @@
-pub mod context;
+pub(crate) mod context;
 pub mod handler;
 
 use core::{
@@ -102,6 +102,7 @@ where
     }
 }
 
+/// Run winit [`EventLoop`] and reactivity system
 pub fn run<Fut: Future<Output = ()>>(fut: Fut) {
     // TODO:: error handling
     let el = EventLoop::<()>::with_user_event().build().unwrap();
