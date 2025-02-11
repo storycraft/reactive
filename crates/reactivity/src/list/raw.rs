@@ -36,6 +36,8 @@ impl RawList {
         self.start().is_none()
     }
 
+    /// # Safety
+    /// Item type must be a same type except lifetimes.
     pub unsafe fn push_front<T>(self: Pin<&Self>, entry: &Entry<T>) {
         let start = self.project_ref().start.get();
         entry.unlink();
@@ -146,5 +148,11 @@ impl Link {
             // SAFETY: pointer is valid as long as linked
             unsafe { parent.as_ref() }.set(next);
         }
+    }
+}
+
+impl Default for Link {
+    fn default() -> Self {
+        Self::new()
     }
 }

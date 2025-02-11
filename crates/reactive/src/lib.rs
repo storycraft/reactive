@@ -39,9 +39,7 @@ where
 impl<'a> SetupFn<'a> for () {
     type Output = ();
 
-    fn show(self, _: Ui<'a>) -> impl Future<Output = Self::Output> + 'a {
-        async {}
-    }
+    async fn show(self, _: Ui<'a>) {}
 }
 
 /// Representation of a functional component with a child

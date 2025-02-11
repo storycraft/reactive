@@ -17,6 +17,8 @@ impl<'a, T> Iter<'a, T> {
         }
     }
 
+    // lending iterators :(
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<&Entry<T>> {
         Some(unsafe { self.inner.next()?.get_extended_ref() })
     }

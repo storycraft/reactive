@@ -8,12 +8,13 @@ use core::{
 use futures::join;
 use rand::random_range;
 use reactive::{
-    taffy::{Dimension, Size, Style}, window::GuiWindow, with_children, wrap_element, Element, SetupFn,
-    SetupFnWithChild, SetupFnWithChildExt,
+    taffy::{Dimension, Size, Style},
+    window::GuiWindow,
+    with_children, wrap_element, Element, SetupFn, SetupFnWithChild, SetupFnWithChildExt,
 };
 use reactivity::let_effect;
 use reactivity_winit::{resource::Resource, run, state::StateCell};
-use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
+use skia_safe::{Canvas, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
 
 fn main() {
@@ -108,6 +109,7 @@ pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChi
 pub struct Block {
     pub x: Cell<f64>,
     pub y: Cell<f64>,
+    pub color: Cell<u32>,
 }
 
 impl Block {
@@ -115,15 +117,16 @@ impl Block {
         Self {
             x: Cell::new(0.0),
             y: Cell::new(0.0),
+            color: Cell::new(0xffffffff),
         }
     }
 }
 
 impl Element for Block {
     fn draw(self: Pin<&Self>, canvas: &Canvas, width: f32, height: f32) {
-        let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
+        let mut paint = Paint::new(Color4f::from(self.color.get()), None);
         paint.set_style(PaintStyle::Fill);
 
-        canvas.draw_rect(Rect::new(0.0,0.0, width, height), &paint);
+        canvas.draw_rect(Rect::new(0.0, 0.0, width, height), &paint);
     }
 }

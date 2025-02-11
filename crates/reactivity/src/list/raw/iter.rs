@@ -8,7 +8,7 @@ pub struct Iter<'a> {
     _ph: PhantomData<&'a ()>,
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = EntryPtr;
 
     fn next(&mut self) -> Option<Self::Item> {

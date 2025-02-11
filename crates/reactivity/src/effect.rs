@@ -123,7 +123,7 @@ pub(crate) struct EffectFnPtr(*mut dyn FnMut());
 impl EffectFnPtr {
     pub fn call(&self) {
         // SAFETY: pointer is always valid since entry is self referential with pointee
-        unsafe { (&mut *self.0)() }
+        unsafe { (*self.0)() }
     }
 }
 

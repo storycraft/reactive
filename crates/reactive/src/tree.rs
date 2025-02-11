@@ -23,10 +23,13 @@ pub struct Tree {
 impl Tree {
     pub fn new() -> Self {
         let mut tree = TaffyTree::new();
-        let root = ElementId(tree.new_leaf(Style {
-            size: Size::from_percent(1.0, 1.0),
-            ..Default::default()
-        }).unwrap());
+        let root = ElementId(
+            tree.new_leaf(Style {
+                size: Size::from_percent(1.0, 1.0),
+                ..Default::default()
+            })
+            .unwrap(),
+        );
 
         Self {
             taffy: RefCell::new(tree),
@@ -131,5 +134,11 @@ impl Tree {
             .unwrap();
 
         redraw_inner(canvas, taffy, self.root.0);
+    }
+}
+
+impl Default for Tree {
+    fn default() -> Self {
+        Self::new()
     }
 }
