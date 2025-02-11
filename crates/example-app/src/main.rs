@@ -5,7 +5,6 @@ use core::{
     time::Duration,
 };
 
-use futures::join;
 use rand::random_range;
 use reactive::{
     taffy::{Dimension, Size, Style},
@@ -13,7 +12,11 @@ use reactive::{
     with_children, wrap_element, Element, SetupFn, SetupFnWithChild, SetupFnWithChildExt,
 };
 use reactivity::let_effect;
-use reactivity_winit::{resource::Resource, run, state::StateCell};
+use reactivity_winit::{
+    resource::Resource,
+    run,
+    state::{StateCell, StateRefCell},
+};
 use skia_safe::{Canvas, Color4f, Paint, PaintStyle, Rect};
 use tokio::time::sleep;
 
@@ -27,11 +30,11 @@ async fn async_main() {
     let win = pin!(GuiWindow::new());
     let win = win.into_ref();
 
-    let x = pin!(StateCell::new(0.0));
-    let x = x.into_ref();
+    let layout = pin!(StateRefCell::new(Style::DEFAULT));
+    let layout = layout.into_ref();
 
-    let y = pin!(StateCell::new(0.0));
-    let y = y.into_ref();
+    let color = pin!(StateCell::new(0xffffffff));
+    let color = color.into_ref();
 
     let input = pin!(StateCell::new(0));
     let input = input.into_ref();
@@ -54,8 +57,8 @@ async fn async_main() {
             input.set(value + 3);
         }
 
-        x.set(random_range(0.0..800.0));
-        y.set(random_range(0.0..600.0));
+        color.set(random_range(0..0xffffffff));
+        layout.get_mut().size = Size::from_lengths(random_range(50.0..300.0), random_range(50.0..300.0));
     });
 
     let_effect!(|| {
@@ -65,17 +68,14 @@ async fn async_main() {
     });
 
     win.show(|ui| async move {
-        join!(
-            block(BlockProp { x, y }).show(ui),
-            block(BlockProp { x, y }).show(ui)
-        );
+        block(BlockProp { layout, color }).show(ui).await;
     })
     .await;
 }
 
 pub struct BlockProp<'a> {
-    x: Pin<&'a StateCell<f64>>,
-    y: Pin<&'a StateCell<f64>>,
+    layout: Pin<&'a StateRefCell<Style>>,
+    color: Pin<&'a StateCell<u32>>,
 }
 
 pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChild<'a, Child> {
@@ -91,11 +91,11 @@ pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChi
             Block::new(),
             move |ui, element| async move {
                 let_effect!(|| {
-                    element.x.set(prop.x.get($));
+                    element.color.set(prop.color.get($));
                 });
 
                 let_effect!(|| {
-                    element.y.set(prop.y.get($));
+                    ui.set_style(ui.current(), prop.layout.get($).clone());
                 });
 
                 child.show(ui).await;
@@ -107,16 +107,12 @@ pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChi
 
 #[derive(Debug)]
 pub struct Block {
-    pub x: Cell<f64>,
-    pub y: Cell<f64>,
     pub color: Cell<u32>,
 }
 
 impl Block {
     pub fn new() -> Self {
         Self {
-            x: Cell::new(0.0),
-            y: Cell::new(0.0),
             color: Cell::new(0xffffffff),
         }
     }
