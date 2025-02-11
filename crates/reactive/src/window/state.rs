@@ -203,13 +203,13 @@ impl WindowState {
         Some(window)
     }
 
-    pub fn suspend(self) -> Self {
-        if let WindowState::Init(cx) = self {
-            WindowState::Suspended {
+    pub fn suspend(&mut self) {
+        *self = match mem::replace(self, WindowState::Invalid) {
+            WindowState::Init(cx) => WindowState::Suspended {
                 cx: cx.gl_cx.make_not_current().unwrap(),
-            }
-        } else {
-            self
+            },
+
+            state => state,
         }
     }
 }

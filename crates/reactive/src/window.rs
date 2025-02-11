@@ -92,8 +92,7 @@ impl WinitWindow for GuiWindow {
 
     fn suspended(self: Pin<&Self>, _el: &ActiveEventLoop) {
         let this = self.project_ref();
-        this.state
-            .replace(this.state.replace(WindowState::Invalid).suspend());
+        this.state.borrow_mut().suspend();
         this.window.set(None);
     }
 
