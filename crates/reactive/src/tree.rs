@@ -74,6 +74,11 @@ impl Tree {
         let _ = self.taffy.borrow_mut().remove(element.0);
     }
 
+    // TODO:: error
+    pub fn set_style(&self, id: ElementId, style: Style) {
+        let _ = self.taffy.borrow_mut().set_style(id.0, style);
+    }
+
     pub fn window_event(&self, el: &ActiveEventLoop, event: &mut WindowEvent) {
         fn event_inner(
             el: &ActiveEventLoop,
@@ -92,12 +97,12 @@ impl Tree {
             }
         }
 
-        if let WindowEvent::Resized(size) = event {
-            self.size.set((size.width, size.height));
-        }
-
-        let taffy = &mut *self.taffy.borrow_mut();
+        let taffy = &*self.taffy.borrow();
         event_inner(el, event, taffy, self.root.0);
+    }
+
+    pub fn resize(&self, width: u32, height: u32) {
+        self.size.set((width, height));
     }
 
     pub fn redraw(&self, canvas: &Canvas) {
