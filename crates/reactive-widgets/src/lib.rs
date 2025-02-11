@@ -29,7 +29,7 @@ pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChi
 
             let_effect!(|| {
                 if let Some(layout) = prop.layout {
-                    ui.set_style(ui.current_id(), layout.get($).clone());
+                    ui.set_style(id, layout.get($).clone());
                 }
             });
 

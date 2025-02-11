@@ -94,7 +94,7 @@ where
 pub struct ElementId(NodeId);
 
 /// Smallest draw unit with a layout
-pub trait Element: 'static {
+pub trait Element: Any {
     fn on_event(self: Pin<&Self>, _el: &ActiveEventLoop, _event: &mut WindowEvent) {}
 
     // Draw element
@@ -118,7 +118,7 @@ pub trait Element: 'static {
 
 impl dyn Element {
     pub(crate) fn downcast_ref<T: Element>(self: Pin<&Self>) -> Option<Pin<&T>> {
-        let tid = self.as_ref().get_ref().type_id();
+        let tid = Any::type_id(self.get_ref());
 
         if tid == TypeId::of::<T>() {
             Some(unsafe { self.map_unchecked(move |el| &*(el as *const dyn Element as *const T)) })
@@ -128,7 +128,7 @@ impl dyn Element {
     }
 
     pub(crate) fn downcast_mut<T: Element>(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
-        let tid = self.as_ref().get_ref().type_id();
+        let tid = Any::type_id(self.as_ref().get_ref());
 
         if tid == TypeId::of::<T>() {
             Some(unsafe {
