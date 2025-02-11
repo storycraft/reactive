@@ -48,4 +48,8 @@ impl<'a> Ui<'a> {
     pub fn remove(&self, id: ElementId) {
         self.tree.remove(id)
     }
+
+    pub fn set_style(&self, id: ElementId, style: Style) {
+        self.tree.set_style(id, style);
+    }
 }
