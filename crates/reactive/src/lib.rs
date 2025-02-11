@@ -122,6 +122,6 @@ where
         let (id, element) = ui.append(default_layout, element);
         defer!(ui.remove(id));
 
-        (f)(Ui::new(ui.tree(), id), element).await
+        f(Ui::new(ui.tree(), id), element).await
     }
 }
