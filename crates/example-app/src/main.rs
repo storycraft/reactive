@@ -7,7 +7,10 @@ use core::{
 
 use futures::join;
 use rand::random_range;
-use reactive::{taffy::Style, window::GuiWindow, with_children, wrap_element, Element, SetupFn, SetupFnWithChild, SetupFnWithChildExt};
+use reactive::{
+    taffy::{Dimension, Size, Style}, window::GuiWindow, with_children, wrap_element, Element, SetupFn,
+    SetupFnWithChild, SetupFnWithChildExt,
+};
 use reactivity::let_effect;
 use reactivity_winit::{resource::Resource, run, state::StateCell};
 use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, Rect};
@@ -77,17 +80,23 @@ pub struct BlockProp<'a> {
 pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChild<'a, Child> {
     with_children::<Child, _>(move |child| {
         wrap_element(
-            Style::DEFAULT,
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.25),
+                    height: Dimension::Percent(0.25),
+                },
+                ..Default::default()
+            },
             Block::new(),
             move |ui, element| async move {
                 let_effect!(|| {
                     element.x.set(prop.x.get($));
                 });
-    
+
                 let_effect!(|| {
                     element.y.set(prop.y.get($));
                 });
-    
+
                 child.show(ui).await;
                 pending::<()>().await;
             },
@@ -111,13 +120,10 @@ impl Block {
 }
 
 impl Element for Block {
-    fn draw(self: Pin<&Self>, canvas: &Canvas) {
+    fn draw(self: Pin<&Self>, canvas: &Canvas, width: f32, height: f32) {
         let mut paint = Paint::new(Color4f::from(Color::GREEN), None);
         paint.set_style(PaintStyle::Fill);
 
-        let x = self.x.get() as f32;
-        let y = self.y.get() as f32;
-
-        canvas.draw_rect(Rect::new(x, y, x + 50.0, y + 50.0), &paint);
+        canvas.draw_rect(Rect::new(0.0,0.0, width, height), &paint);
     }
 }

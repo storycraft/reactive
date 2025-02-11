@@ -1,9 +1,12 @@
-use core::{cell::RefCell, pin::Pin};
+use core::{
+    cell::{Cell, RefCell},
+    pin::Pin,
+};
 use std::rc::Rc;
 
 use reactivity_winit::winit::{event::WindowEvent, event_loop::ActiveEventLoop};
 use skia_safe::Canvas;
-use taffy::{NodeId, Style, TaffyTree, TraversePartialTree};
+use taffy::{AvailableSpace, NodeId, Size, Style, TaffyTree, TraversePartialTree};
 
 use crate::{Element, ElementId};
 
@@ -13,16 +16,21 @@ type TaffyElementTree = TaffyTree<Pin<Rc<dyn Element>>>;
 pub struct Tree {
     #[debug(skip)]
     taffy: RefCell<TaffyElementTree>,
+    size: Cell<(u32, u32)>,
     root: ElementId,
 }
 
 impl Tree {
     pub fn new() -> Self {
         let mut tree = TaffyTree::new();
-        let root = ElementId(tree.new_leaf(Style::DEFAULT).unwrap());
+        let root = ElementId(tree.new_leaf(Style {
+            size: Size::from_percent(1.0, 1.0),
+            ..Default::default()
+        }).unwrap());
 
         Self {
             taffy: RefCell::new(tree),
+            size: Cell::new((0, 0)),
             root,
         }
     }
@@ -81,7 +89,11 @@ impl Tree {
             }
         }
 
-        let taffy = &*self.taffy.borrow();
+        if let WindowEvent::Resized(size) = event {
+            self.size.set((size.width, size.height));
+        }
+
+        let taffy = &mut *self.taffy.borrow_mut();
         event_inner(el, event, taffy, self.root.0);
     }
 
@@ -91,17 +103,33 @@ impl Tree {
                 let Some(cx) = taffy.get_node_context(child) else {
                     continue;
                 };
+                let layout = taffy.layout(child).unwrap();
+
                 let cx = cx.as_ref();
 
-                cx.draw(canvas);
+                canvas.translate((layout.location.x, layout.location.y));
+                cx.draw(canvas, layout.size.width, layout.size.height);
 
                 cx.pre_child_draw(canvas);
                 redraw_inner(canvas, taffy, child);
                 cx.post_child_draw(canvas);
+
+                canvas.translate((-layout.location.x, -layout.location.y));
             }
         }
 
-        let taffy = &*self.taffy.borrow();
+        let (width, height) = self.size.get();
+        let taffy = &mut *self.taffy.borrow_mut();
+        taffy
+            .compute_layout(
+                self.root.0,
+                Size {
+                    width: AvailableSpace::Definite(width as _),
+                    height: AvailableSpace::Definite(height as _),
+                },
+            )
+            .unwrap();
+
         redraw_inner(canvas, taffy, self.root.0);
     }
 }

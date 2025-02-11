@@ -93,7 +93,7 @@ pub trait Element: 'static {
     fn on_event(self: Pin<&Self>, _el: &ActiveEventLoop, _event: &mut WindowEvent) {}
 
     // Draw elements
-    fn draw(self: Pin<&Self>, _canvas: &Canvas) {}
+    fn draw(self: Pin<&Self>, _canvas: &Canvas, _width: f32, _height: f32) {}
 
     // Called before drawing relative positioned children
     fn pre_child_draw(self: Pin<&Self>, _canvas: &Canvas) {}
