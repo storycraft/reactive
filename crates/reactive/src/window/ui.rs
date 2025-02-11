@@ -5,7 +5,7 @@ use taffy::Style;
 
 use crate::{tree::Tree, Element, ElementId};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ui<'a> {
     tree: &'a Tree,
     current: ElementId,
