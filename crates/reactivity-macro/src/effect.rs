@@ -66,7 +66,21 @@ pub fn gen(EffectDef { closure }: EffectDef) -> TokenStream {
     let bindings = Ident::new("bindings", Span::mixed_site());
     let (len, tokens) = BindingGen::transform(&bindings, closure);
 
+    let unused_warn = if len == 0 {
+        Some(quote!(
+            {
+                #[must_use = "Effects not using bindings are never called again."]
+                #[allow(non_camel_case)]
+                struct #bindings;
+                #bindings;
+            }
+        ))
+    } else {
+        None
+    };
+
     quote!(
+        #unused_warn
         let #effect = ::core::pin::pin!(
             ::reactivity::effect::effect::<#len>(|#bindings| ({ #tokens })())
         );
