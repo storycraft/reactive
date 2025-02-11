@@ -38,12 +38,10 @@ macro_rules! define_safe_list {
             }
 
             /// Link a entry to start
-            pub fn push_front<T>(
+            pub fn push_front<$($lt),*>(
                 self: ::core::pin::Pin<&Self>,
-                entry: &$crate::list::Entry<T>
-            )
-                where for<$($lt),*> fn($ty): ::core::ops::Fn(T)
-            {
+                entry: &$crate::list::Entry<$ty>
+            ) {
                 unsafe {
                     self.project_ref().raw.push_front(entry);
                 }
