@@ -111,7 +111,6 @@ impl WinitWindow for GuiWindow {
                     (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
                 {
                     cx.resize(width, height);
-
                     this.ui.resize(width.get(), height.get());
                 }
             }
@@ -119,9 +118,7 @@ impl WinitWindow for GuiWindow {
             WindowEvent::RedrawRequested => {
                 let canvas = cx.canvas();
                 canvas.clear(Color::BLACK);
-
                 this.ui.redraw(canvas);
-
                 cx.render();
             }
 
