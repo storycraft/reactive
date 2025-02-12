@@ -19,6 +19,7 @@ use reactivity_winit::{
 };
 use skia_safe::Color;
 use state::{Context, WindowState};
+use std::rc::Rc;
 use ui::Ui;
 
 use crate::{tree::Tree, SetupFn};
@@ -30,7 +31,7 @@ pub struct GuiWindow {
     state: RefCell<WindowState>,
     #[pin]
     window: StateRefCell<Option<Window>>,
-    ui: RefCell<Tree>,
+    ui: Rc<RefCell<Tree>>,
 }
 
 impl GuiWindow {
@@ -42,7 +43,7 @@ impl GuiWindow {
             state: RefCell::new(WindowState::new(builder)),
             attr,
             window: StateRefCell::new(None),
-            ui: RefCell::new(Tree::new()),
+            ui: Rc::new(RefCell::new(Tree::new())),
         }
     }
 
@@ -50,11 +51,8 @@ impl GuiWindow {
         self.project_ref().window
     }
 
-    pub async fn show<'a, F>(self: Pin<&'a Self>, f: F) -> F::Output
-    where
-        F: SetupFn<'a>,
-    {
-        handler::add(self, f.show(Ui::root(&self.get_ref().ui))).await
+    pub async fn show<F: SetupFn>(self: Pin<&Self>, f: F) -> F::Output {
+        handler::add(self, f.show(Ui::root(self.get_ref().ui.clone()))).await
     }
 }
 

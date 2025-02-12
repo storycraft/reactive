@@ -4,8 +4,8 @@ use futures::join;
 use rand::random_range;
 use reactive::{
     taffy::{Size, Style},
-    window::GuiWindow,
-    SetupFn, SetupFnWithChild, SetupFnWithChildExt,
+    window::{ui::Ui, GuiWindow},
+    SetupFn, SetupFnWithChildExt, WithChild,
 };
 use reactive_widgets::{
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
@@ -57,18 +57,17 @@ async fn async_main() {
         }
     });
 
-    win.show(|ui| async move {
+    win.show(|ui: Ui| async move {
         join!(
-            flash_block().show(ui),
-            flash_block().show(ui),
+            flash_block().show(ui.clone()),
+            flash_block().show(ui.clone()),
             flash_block().show(ui),
         );
     })
     .await;
 }
 
-fn flash_block<'a, Child: SetupFn<'a> + 'a>(
-) -> impl SetupFnWithChild<'a, Child> {
+fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
     |ui, child| async move {
         let layout = pin!(StateRefCell::new(Style {
             size: Size::from_percent(0.1, 0.1),
@@ -96,6 +95,7 @@ fn flash_block<'a, Child: SetupFn<'a> + 'a>(
             .layout(layout.into_ref())
             .fill(Fill::builder().color(color).build())
             .build()
+            .child(child)
             .show(ui)
             .await
     }

@@ -20,58 +20,58 @@ use window::ui::Ui;
 /// Representation of a functional component.
 ///
 /// This trait is implemented for all `FnOnce(Ui<'a>) -> impl Future + 'a` types.
-pub trait SetupFn<'a> {
+pub trait SetupFn {
     type Output;
 
-    fn show(self, ui: Ui<'a>) -> impl Future<Output = Self::Output>;
+    fn show(self, ui: Ui) -> impl Future<Output = Self::Output>;
 }
 
 // For function components without children
-impl<'a, F, Fut> SetupFn<'a> for F
+impl<F, Fut> SetupFn for F
 where
-    F: FnOnce(Ui<'a>) -> Fut,
+    F: FnOnce(Ui) -> Fut,
     Fut: Future,
 {
     type Output = Fut::Output;
 
-    fn show(self, ui: Ui<'a>) -> impl Future<Output = Self::Output> {
+    fn show(self, ui: Ui) -> impl Future<Output = Self::Output> {
         self(ui)
     }
 }
 
-impl<'a> SetupFn<'a> for () {
+impl SetupFn for () {
     type Output = ();
 
-    async fn show(self, _: Ui<'a>) {
+    async fn show(self, _: Ui) {
         pending::<()>().await;
     }
 }
 
 /// Representation of a functional component with a child
-pub trait SetupFnWithChild<'a, Child> {
+pub trait WithChild<Child> {
     type Output;
 
-    fn child(self, child: Child) -> impl SetupFn<'a, Output = Self::Output>;
+    fn child(self, child: Child) -> impl SetupFn<Output = Self::Output>;
 }
 
-impl<'a, F, Child, Fut> SetupFnWithChild<'a, Child> for F
+impl<F, Child, Fut> WithChild<Child> for F
 where
-    F: FnOnce(Ui<'a>, Child) -> Fut,
+    F: FnOnce(Ui, Child) -> Fut,
     Fut: Future,
 {
     type Output = Fut::Output;
 
-    fn child(self, child: Child) -> impl SetupFn<'a, Output = Fut::Output> {
+    fn child(self, child: Child) -> impl SetupFn<Output = Fut::Output> {
         |ui| self(ui, child)
     }
 }
 
 #[easy_ext::ext(SetupFnWithChildExt)]
-pub impl<'a, F> F
+pub impl<F> F
 where
-    F: SetupFnWithChild<'a, ()> + 'a,
+    F: WithChild<()>,
 {
-    fn show(self, ui: Ui<'a>) -> impl Future<Output = F::Output> + 'a {
+    fn show(self, ui: Ui) -> impl Future<Output = F::Output> {
         self.child(()).show(ui)
     }
 }
@@ -127,16 +127,12 @@ impl dyn Element {
     }
 }
 
-pub fn create_element<'a, T, F>(
-    element: T,
+pub fn create_element<F: SetupFn>(
+    element: impl Element,
     default_layout: Style,
     f: F,
-) -> impl SetupFn<'a, Output = F::Output>
-where
-    T: Element,
-    F: SetupFn<'a>,
-{
-    move |ui: Ui<'a>| async move {
+) -> impl SetupFn<Output = F::Output> {
+    |ui: Ui| async move {
         let id = ui.append(default_layout, element);
         defer!(ui.remove(id));
 

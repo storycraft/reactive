@@ -1,27 +1,28 @@
 use core::{cell::RefCell, pin::Pin};
+use std::rc::Rc;
 
 use taffy::Style;
 
 use crate::{tree::Tree, Element, ElementId};
 
-#[derive(Debug, Clone, Copy)]
-pub struct Ui<'a> {
-    tree: &'a RefCell<Tree>,
+#[derive(Debug, Clone)]
+pub struct Ui {
+    tree: Rc<RefCell<Tree>>,
     current: ElementId,
 }
 
-impl<'a> Ui<'a> {
-    pub const fn new(tree: &'a RefCell<Tree>, current: ElementId) -> Self {
+impl Ui {
+    pub const fn new(tree: Rc<RefCell<Tree>>, current: ElementId) -> Self {
         Self { tree, current }
     }
 
-    pub fn root(tree: &'a RefCell<Tree>) -> Self {
+    pub fn root(tree: Rc<RefCell<Tree>>) -> Self {
         let current = tree.borrow().root();
         Self::new(tree, current)
     }
 
-    pub fn sub_ui(&self, child: ElementId) -> Ui<'a> {
-        Self::new(self.tree, child)
+    pub fn sub_ui(&self, child: ElementId) -> Ui {
+        Self::new(self.tree.clone(), child)
     }
 
     pub fn current_id(&self) -> ElementId {
