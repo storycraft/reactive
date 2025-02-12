@@ -59,8 +59,8 @@ pub trait SetupFnWithChild<'a, Child> {
 impl<'a, F, Child, Fut> SetupFnWithChild<'a, Child> for F
 where
     F: FnOnce(Ui<'a>, Child) -> Fut + 'a,
-    Child: SetupFn<'a>,
-    Fut: Future + 'a,
+    Child: 'a,
+    Fut: Future + 'a
 {
     type Output = Fut::Output;
 
