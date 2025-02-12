@@ -3,12 +3,12 @@ use quote::quote;
 use syn::Ident;
 
 pub struct EffectDef {
-    closure: TokenStream,
+    expr: TokenStream,
 }
 
 impl EffectDef {
-    pub const fn new(closure: TokenStream) -> Self {
-        Self { closure }
+    pub const fn new(expr: TokenStream) -> Self {
+        Self { expr }
     }
 }
 
@@ -61,10 +61,10 @@ impl<'a> BindingGen<'a> {
     }
 }
 
-pub fn gen(EffectDef { closure }: EffectDef) -> TokenStream {
+pub fn gen(EffectDef { expr }: EffectDef) -> TokenStream {
     let effect = Ident::new("_effect", Span::mixed_site());
     let bindings = Ident::new("bindings", Span::mixed_site());
-    let (len, tokens) = BindingGen::transform(&bindings, closure);
+    let (len, tokens) = BindingGen::transform(&bindings, expr);
 
     let unused_warn = if len == 0 {
         Some(quote!(
