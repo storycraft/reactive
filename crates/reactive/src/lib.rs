@@ -8,7 +8,7 @@ pub use taffy;
 
 use core::{
     any::{Any, TypeId},
-    future::Future,
+    future::{pending, Future},
     pin::Pin,
 };
 use reactivity_winit::winit::{event::WindowEvent, event_loop::ActiveEventLoop};
@@ -45,7 +45,9 @@ where
 impl<'a> SetupFn<'a> for () {
     type Output = ();
 
-    async fn show(self, _: Ui<'a>) {}
+    async fn show(self, _: Ui<'a>) {
+        pending::<()>().await;
+    }
 }
 
 /// Representation of a functional component with a child
@@ -59,7 +61,7 @@ impl<'a, F, Child, Fut> SetupFnWithChild<'a, Child> for F
 where
     F: FnOnce(Ui<'a>, Child) -> Fut + 'a,
     Child: 'a,
-    Fut: Future + 'a
+    Fut: Future + 'a,
 {
     type Output = Fut::Output;
 
@@ -81,7 +83,7 @@ where
 /// Wrap functional component with a child
 pub fn with_children<'a, Child, C>(
     f: impl FnOnce(Child) -> C + 'a,
-) -> impl SetupFnWithChild<'a, Child>
+) -> impl SetupFnWithChild<'a, Child, Output = C::Output>
 where
     C: SetupFn<'a> + 'a,
     Child: SetupFn<'a>,
