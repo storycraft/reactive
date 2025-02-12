@@ -7,7 +7,12 @@ use core::pin::Pin;
 use bon::Builder;
 use palette::Srgba;
 use reactive::{
-    reactivity_winit::state::{StateCell, StateRefCell}, skia_safe::{self, Canvas, Color4f, Paint, Point, RRect, Rect}, taffy::{Layout, Style}, window::ui::Ui, create_element, Element, SetupFn, SetupFnWithChild
+    create_element,
+    reactivity_winit::state::{StateCell, StateRefCell},
+    skia_safe::{self, Canvas, Color4f, Paint, Point, RRect, Rect},
+    taffy::{Layout, Style},
+    window::ui::Ui,
+    Element, SetupFn, SetupFnWithChild,
 };
 use reactivity::let_effect;
 use util::use_mut;
@@ -33,10 +38,7 @@ pub struct Border<'a> {
 }
 
 impl<'a> Block<'a> {
-    fn show<Child: SetupFn<'a> + 'a>(
-        self,
-        child: Child,
-    ) -> impl SetupFn<'a, Output = Child::Output> {
+    fn show<Child: SetupFn<'a>>(self, child: Child) -> impl SetupFn<'a, Output = Child::Output> {
         create_element(
             BlockElement::new(),
             Style::DEFAULT,
