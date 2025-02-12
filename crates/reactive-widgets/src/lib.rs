@@ -10,7 +10,7 @@ use reactive::{
     reactivity_winit::state::{StateCell, StateRefCell},
     skia_safe::{self, Canvas, Color4f, Paint, Point, RRect, Rect},
     taffy::{Layout, Style},
-    with_children, wrap_element, Element, SetupFn, SetupFnWithChild,
+    wrap_element, Element, SetupFn, SetupFnWithChild,
 };
 use reactivity::let_effect;
 use util::use_mut;
@@ -98,7 +98,7 @@ where
     type Output = Child::Output;
 
     fn child(self, child: Child) -> impl SetupFn<'a, Output = Self::Output> {
-        with_children(|child| self.show(child)).child(child)
+        self.show(child)
     }
 }
 

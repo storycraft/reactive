@@ -80,17 +80,6 @@ where
     }
 }
 
-/// Wrap functional component with a child
-pub fn with_children<'a, Child, C>(
-    f: impl FnOnce(Child) -> C + 'a,
-) -> impl SetupFnWithChild<'a, Child, Output = C::Output>
-where
-    C: SetupFn<'a> + 'a,
-    Child: SetupFn<'a>,
-{
-    |ui, child| f(child).show(ui)
-}
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ElementId(NodeId);
