@@ -1,3 +1,5 @@
+pub(crate) mod util;
+
 use core::{future::pending, pin::Pin};
 
 use reactive::{
@@ -7,6 +9,7 @@ use reactive::{
     with_children, wrap_element, Element, SetupFn, SetupFnWithChild,
 };
 use reactivity::let_effect;
+use util::use_mut;
 
 #[derive(Debug, Default)]
 pub struct BlockProp<'a> {
@@ -19,15 +22,17 @@ pub fn block<'a, Child: SetupFn<'a>>(prop: BlockProp<'a>) -> impl SetupFnWithChi
         wrap_element(Style::DEFAULT, Block::new(), move |ui| async move {
             let id = ui.current_id();
 
-            let_effect!(|| {
-                ui.with_mut::<Block, _>(id, |mut element| {
+            let_effect!(use_mut::<Block>(
+                ui,
+                id,
+                |mut element| {
                     if let Some(color) = prop.color {
                         element.paint.set_color(Color::new(color.get($)));
                     }
-                });
-            });
+                }
+            ));
 
-            let_effect!(|| {
+            let_effect!({
                 if let Some(layout) = prop.layout {
                     ui.set_style(id, layout.get($).clone());
                 }

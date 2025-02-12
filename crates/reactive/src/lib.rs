@@ -1,6 +1,7 @@
 pub(crate) mod tree;
 pub mod window;
 
+pub use reactivity;
 pub use reactivity_winit;
 pub use reactivity_winit::winit;
 pub use skia_safe;

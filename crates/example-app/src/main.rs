@@ -35,7 +35,7 @@ async fn async_main() {
     let input = input.into_ref();
 
     let resource = Resource::new();
-    let_effect!(|| {
+    let_effect!({
         let input = input.get($);
         println!("Reloading resource due to input changes, input: {input}");
 
@@ -46,7 +46,7 @@ async fn async_main() {
         });
     });
 
-    let_effect!(|| {
+    let_effect!({
         if let Some(value) = resource.get($) {
             println!("Resource loaded, value: {value}");
             input.set(value + 3);
@@ -56,7 +56,7 @@ async fn async_main() {
         layout.get_mut().size = Size::from_lengths(random_range(50.0..300.0), random_range(50.0..300.0));
     });
 
-    let_effect!(|| {
+    let_effect!({
         if let Some(window) = &*win.window().get($) {
             println!("window loaded {:?}", window);
         }

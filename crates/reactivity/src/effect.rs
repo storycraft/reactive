@@ -77,8 +77,9 @@ impl<const SIZE: usize> BindingArray<SIZE> {
     }
 }
 
-pub fn effect<const BINDINGS: usize>(
-    mut f: impl FnMut(Pin<&BindingArray<BINDINGS>>),
+#[must_use]
+pub fn effect<const BINDINGS: usize, R>(
+    mut f: impl FnMut(Pin<&BindingArray<BINDINGS>>) -> R,
 ) -> impl Effect {
     #[pin_project]
     struct ImplEffect<Fut> {
@@ -103,7 +104,9 @@ pub fn effect<const BINDINGS: usize>(
             let bindings = pin!(BindingArray::<BINDINGS>::new());
             let bindings = bindings.into_ref();
 
-            let f = pin!(Aliasable::new(UnsafeCell::new(|| { f(bindings) })));
+            let f = pin!(Aliasable::new(UnsafeCell::new(|| {
+                let _ = f(bindings);
+            })));
             let f = f.into_ref().get().get() as *mut dyn FnMut();
 
             let to_queue = pin!(Node::new(EffectFnPtr(f)));

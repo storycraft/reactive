@@ -38,6 +38,7 @@ impl<'a> Ui<'a> {
         id
     }
 
+    #[must_use]
     pub fn with_ref<T: Element, R>(
         &self,
         id: ElementId,
@@ -46,6 +47,7 @@ impl<'a> Ui<'a> {
         Some(f(self.tree.borrow().get(id)?))
     }
 
+    #[must_use]
     pub fn with_mut<T: Element, R>(
         &self,
         id: ElementId,
