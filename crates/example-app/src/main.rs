@@ -1,10 +1,11 @@
 use core::{pin::pin, time::Duration};
 
+use futures::join;
 use rand::random_range;
 use reactive::{
     taffy::{Size, Style},
     window::GuiWindow,
-    SetupFnWithChildExt,
+    SetupFn, SetupFnWithChild, SetupFnWithChildExt,
 };
 use reactive_widgets::{
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
@@ -28,14 +29,6 @@ async fn async_main() {
     let win = pin!(GuiWindow::new());
     let win = win.into_ref();
 
-    let layout = pin!(StateRefCell::new(Style::DEFAULT));
-    let layout = layout.into_ref();
-
-    let color = pin!(StateCell::new(
-        named::GREEN.into_format::<f32>().with_alpha(1.0)
-    ));
-    let color = color.into_ref();
-
     let input = pin!(StateCell::new(0));
     let input = input.into_ref();
 
@@ -46,7 +39,7 @@ async fn async_main() {
 
         resource.load(async move {
             // IO heavy task
-            sleep(Duration::from_secs(1)).await;
+            sleep(Duration::from_secs(4)).await;
             input + 4
         });
     });
@@ -56,9 +49,6 @@ async fn async_main() {
             println!("Resource loaded, value: {value}");
             input.set(value + 3);
         }
-
-        color.set(Srgba::from_u32::<Argb>(random_range(0_u32..0xffffffff)).into_format());
-        layout.get_mut().size = Size::from_lengths(random_range(50.0..300.0), random_range(50.0..300.0));
     });
 
     let_effect!({
@@ -68,12 +58,45 @@ async fn async_main() {
     });
 
     win.show(|ui| async move {
+        join!(
+            flash_block().show(ui),
+            flash_block().show(ui),
+            flash_block().show(ui),
+        );
+    })
+    .await;
+}
+
+fn flash_block<'a, Child: SetupFn<'a> + 'a>(
+) -> impl SetupFnWithChild<'a, Child> {
+    |ui, child| async move {
+        let layout = pin!(StateRefCell::new(Style {
+            size: Size::from_percent(0.1, 0.1),
+            ..Style::DEFAULT
+        }));
+
+        let color = pin!(StateCell::new(
+            named::WHITE.into_format::<f32>().with_alpha(1.0)
+        ));
+        let color = color.into_ref();
+
+        let resource = Resource::new();
+        let_effect!({
+            if let Some(value) = resource.get($) {
+                color.set(value);
+            }
+
+            resource.load(async move {
+                sleep(Duration::from_millis(100)).await;
+                Srgba::from_u32::<Argb>(random_range(0_u32..0xffffffff)).into_format()
+            });
+        });
+
         Block::builder()
-            .layout(layout)
+            .layout(layout.into_ref())
             .fill(Fill::builder().color(color).build())
             .build()
             .show(ui)
-            .await;
-    })
-    .await;
+            .await
+    }
 }
