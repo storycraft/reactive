@@ -117,7 +117,7 @@ pub fn run<Fut: Future<Output = ()>>(fut: Fut) {
     let cx = Rc::pin(AppCx::new(Some(waker.clone())));
 
     let fut_cx = cx.clone();
-    let fut = pin!(fut_cx.executor().run(fut));
+    let fut = pin!(fut_cx.executor().run(Box::pin(fut)));
 
     let mut app = App { cx, waker, fut };
     if app.poll().is_ready() {
