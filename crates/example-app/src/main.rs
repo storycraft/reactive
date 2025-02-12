@@ -6,7 +6,10 @@ use reactive::{
     window::GuiWindow,
     SetupFnWithChildExt,
 };
-use reactive_widgets::{block, BlockProp};
+use reactive_widgets::{
+    palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
+    Block, Fill,
+};
 use reactivity::let_effect;
 use reactivity_winit::{
     resource::Resource,
@@ -28,7 +31,9 @@ async fn async_main() {
     let layout = pin!(StateRefCell::new(Style::DEFAULT));
     let layout = layout.into_ref();
 
-    let color = pin!(StateCell::new(0xffffffff));
+    let color = pin!(StateCell::new(
+        named::GREEN.into_format::<f32>().with_alpha(1.0)
+    ));
     let color = color.into_ref();
 
     let input = pin!(StateCell::new(0));
@@ -52,7 +57,7 @@ async fn async_main() {
             input.set(value + 3);
         }
 
-        color.set(random_range(0..0xffffffff));
+        color.set(Srgba::from_u32::<Argb>(random_range(0_u32..0xffffffff)).into_format());
         layout.get_mut().size = Size::from_lengths(random_range(50.0..300.0), random_range(50.0..300.0));
     });
 
@@ -63,12 +68,12 @@ async fn async_main() {
     });
 
     win.show(|ui| async move {
-        block(BlockProp {
-            layout: Some(layout),
-            color: Some(color),
-        })
-        .show(ui)
-        .await;
+        Block::builder()
+            .layout(layout)
+            .fill(Fill::builder().color(color).build())
+            .build()
+            .show(ui)
+            .await;
     })
     .await;
 }

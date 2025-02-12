@@ -6,5 +6,8 @@ authors = ["storycraft <storycraft@pancake.sh>"]
 license.workspace = true
 
 [dependencies]
-reactivity.workspace = true
 reactive.workspace = true
+reactivity.workspace = true
+
+bon = "3.3.2"
+palette = "0.7.6"
