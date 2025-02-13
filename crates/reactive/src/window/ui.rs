@@ -1,4 +1,7 @@
-use core::{cell::RefCell, pin::Pin};
+use core::{
+    cell::{Cell, RefCell},
+    pin::Pin,
+};
 use std::rc::Rc;
 
 use pin_project::pin_project;
@@ -25,6 +28,7 @@ impl Ui {
         Self {
             inner: Rc::pin(Inner {
                 window: StateCell::new(window),
+                draw_queued: Cell::new(false),
                 tree: RefCell::new(tree),
             }),
             current,
@@ -67,11 +71,18 @@ impl Ui {
     }
 
     pub fn request_redraw(&self) {
-        let _ = self.with_window_untracked(|window| window.request_redraw());
+        if !self.inner.draw_queued.get() {
+            self.inner.draw_queued.set(true);
+            let _ = self.with_window_untracked(|window| window.request_redraw());
+        }
     }
 
     pub fn draw(&self, canvas: &skia_safe::Canvas) {
-        self.inner.tree.borrow_mut().draw(canvas);
+        let inner = self.inner.as_ref();
+        if inner.draw_queued.get() {
+            inner.draw_queued.set(false);
+        }
+        inner.tree.borrow_mut().draw(canvas);
     }
 
     pub fn dispatch_window_event(&self, el: &ActiveEventLoop, event: &mut WindowEvent) {
@@ -81,7 +92,12 @@ impl Ui {
     pub fn change_window(&self, window: Window) {
         let size = window.inner_size();
         let inner = self.inner.as_ref();
+
         inner.tree.borrow_mut().resize(size.width, size.height);
+        if inner.draw_queued.get() {
+            window.request_redraw();
+        }
+
         inner.window().set(Some(window));
     }
 
@@ -134,6 +150,7 @@ impl Ui {
 struct Inner {
     #[pin]
     window: StateCell<Option<Window>>,
+    draw_queued: Cell<bool>,
     tree: RefCell<Tree>,
 }
 
