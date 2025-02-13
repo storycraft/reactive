@@ -41,7 +41,16 @@ pub struct Border<'a> {
 
 #[derive(Builder, Default)]
 pub struct Text<'a> {
-    content: Option<Pin<&'a StateCell<String>>>,
+    content: Option<Pin<&'a StateRefCell<String>>>,
+    #[builder(default)]
+    style: TextStyle<'a>,
+}
+
+#[derive(Builder, Default)]
+pub struct TextStyle<'a> {
+    color: Option<Pin<&'a StateCell<Srgba>>>,
+    stroke_color: Option<Pin<&'a StateCell<Srgba>>>,
+    size: Option<Pin<&'a StateCell<f32>>>,
 }
 
 impl<'a> Block<'a> {
@@ -53,7 +62,7 @@ impl<'a> Block<'a> {
                 let id = ui.current_id();
 
                 macro_rules! wire_ui {
-                    ($name:ident = $prop:expr => $($tt:tt)*) => {
+                    ($name:pat = $prop:expr => $($tt:tt)*) => {
                         let_effect!({
                             if let Some($name) = $prop {
                                 ui.request_redraw();
@@ -63,7 +72,7 @@ impl<'a> Block<'a> {
                         });
                     };
 
-                    ($element:ident, $name:ident = $prop:expr => $($tt:tt)*) => {
+                    ($element:ident, $name:pat = $prop:expr => $($tt:tt)*) => {
                         wire_ui!($name = $prop => {
                             use_mut::<BlockElement>(
                                 &ui,
@@ -100,8 +109,34 @@ impl<'a> Block<'a> {
                     element.stroke_paint.set_stroke_width(thickness.get($));
                 });
 
-                wire_ui!(element, text = self.text.content => {
-                    // element.text = Some(skia_safe::TextBlobBuilder::new().alloc_run_text(font, count, offset, text_byte_count, bounds))
+                wire_ui!(element, (text, size) = self.text.content.zip(self.text.style.size) => {
+                    let text = &*text.get($);
+                    let size = size.get($);
+
+                    element.text = skia_safe::TextBlob::from_str(
+                        text,
+                        &skia_safe::Font::from_typeface(
+                            skia_safe::FontMgr::new()
+                                .legacy_make_typeface(None, skia_safe::FontStyle::normal()).unwrap(),
+                            Some(size)
+                        )
+                    );
+                });
+
+                wire_ui!(element, color = self.text.style.color => {
+                    let color = color.get($);
+                    element.text_fill_paint.set_color4f(
+                        skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
+                        None
+                    );
+                });
+
+                wire_ui!(element, color = self.text.style.stroke_color => {
+                    let color = color.get($);
+                    element.text_stroke_paint.set_color4f(
+                        skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
+                        None
+                    );
                 });
 
                 child.show(ui.clone()).await

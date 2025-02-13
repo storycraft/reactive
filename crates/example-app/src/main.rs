@@ -9,7 +9,7 @@ use reactive::{
 };
 use reactive_widgets::{
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
-    Block, Fill,
+    Block, Fill, Text, TextStyle,
 };
 use reactivity::let_effect;
 use reactivity_winit::{
@@ -18,14 +18,15 @@ use reactivity_winit::{
     state::{StateCell, StateRefCell},
 };
 use tokio::time::sleep;
+use winit::event_loop::EventLoopBuilder;
 
 fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     let _guard = rt.enter();
-    run(async_main());
+    run(EventLoopBuilder::default(), async_main());
 }
 
-async fn async_main() {
+pub async fn async_main() {
     let win = pin!(GuiWindow::new());
     let win = win.into_ref();
 
@@ -83,6 +84,12 @@ fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
             ..Style::DEFAULT
         }));
 
+        let text = pin!(StateRefCell::new(String::new()));
+        let text = text.into_ref();
+
+        let size = pin!(StateCell::new(16.0));
+        let size = size.into_ref();
+
         let color = pin!(StateCell::new(
             named::WHITE.into_format::<f32>().with_alpha(1.0)
         ));
@@ -91,6 +98,10 @@ fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
         let resource = Resource::new();
         let_effect!({
             if let Some(value) = resource.get($) {
+                let value: Srgba = value;
+                let rgba = Srgba::<u8>::from(value);
+                *text.get_mut() = format!("color: {} {} {}", rgba.red, rgba.green, rgba.blue);
+                size.set(random_range(16.0..32.0));
                 color.set(value);
             }
 
@@ -103,6 +114,12 @@ fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
         Block::builder()
             .layout(layout.into_ref())
             .fill(Fill::builder().color(color).build())
+            .text(
+                Text::builder()
+                    .content(text)
+                    .style(TextStyle::builder().size(size).build())
+                    .build(),
+            )
             .build()
             .child(child)
             .show(ui)

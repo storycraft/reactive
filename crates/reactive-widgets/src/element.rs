@@ -7,15 +7,19 @@ pub struct BlockElement {
     pub stroke_paint: skia_safe::Paint,
     pub border_radius: [skia_safe::Point; 4],
     pub text: Option<skia_safe::TextBlob>,
+    pub text_fill_paint: skia_safe::Paint,
+    pub text_stroke_paint: skia_safe::Paint,
 }
 
 impl BlockElement {
     pub fn new() -> Self {
         Self {
-            fill_paint: skia_safe::Paint::new(skia_safe::Color4f::from_bytes_rgba(0), None),
-            stroke_paint: skia_safe::Paint::new(skia_safe::Color4f::from_bytes_rgba(0), None),
+            fill_paint: skia_safe::Paint::new(skia_safe::colors::TRANSPARENT, None),
+            stroke_paint: skia_safe::Paint::new(skia_safe::colors::TRANSPARENT, None),
             border_radius: [skia_safe::Point::new(0.0, 0.0); 4],
             text: None,
+            text_fill_paint: skia_safe::Paint::new(skia_safe::colors::BLACK, None),
+            text_stroke_paint: skia_safe::Paint::new(skia_safe::colors::TRANSPARENT, None),
         }
     }
 }
@@ -51,8 +55,15 @@ impl Element for BlockElement {
             }
         }
 
-        if let Some(text) = self.text.as_ref() {
-            canvas.draw_text_blob(text, skia_safe::Point::new(0.0, 0.0), stroke_paint);
+        if let Some(blob) = self.text.as_ref() {
+            let origin = skia_safe::Point::new(0.0, layout.content_box_height());
+            if !self.text_fill_paint.nothing_to_draw() {
+                canvas.draw_text_blob(blob, origin, &self.text_fill_paint);
+            }
+
+            if !self.text_stroke_paint.nothing_to_draw() {
+                canvas.draw_text_blob(blob, origin, &self.text_stroke_paint);
+            }
         }
     }
 
@@ -62,6 +73,14 @@ impl Element for BlockElement {
         _available_space: taffy::Size<taffy::AvailableSpace>,
         _style: &taffy::Style,
     ) -> taffy::Size<f32> {
+        if let Some(blob) = self.text.as_ref() {
+            let rect = blob.bounds();
+            return taffy::Size {
+                width: rect.width(),
+                height: rect.height(),
+            };
+        }
+
         taffy::Size::ZERO
     }
 }
