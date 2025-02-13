@@ -13,7 +13,7 @@ use waker_fn::waker_fn;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop},
+    event_loop::{ActiveEventLoop, EventLoopBuilder},
     window::WindowId,
 };
 
@@ -95,9 +95,9 @@ where
 }
 
 /// Run winit [`EventLoop`] and reactivity system
-pub fn run<Fut: Future<Output = ()>>(fut: Fut) {
+pub fn run<Fut: Future<Output = ()>>(mut el: EventLoopBuilder<()>, fut: Fut) {
     // TODO:: error handling
-    let el = EventLoop::<()>::with_user_event().build().unwrap();
+    let el = el.build().unwrap();
 
     let waker = waker_fn({
         let proxy = el.create_proxy();
