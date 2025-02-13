@@ -18,16 +18,19 @@ pub trait Effect {
     fn init(self: Pin<&mut Self>);
 }
 
+/// Pinned connection to dependency tracker from a effect
+pub type Binding<'a> = Pin<&'a RawBinding>;
+
 #[derive(Debug)]
 #[pin_project]
-/// Connection to dependency tracker from a effect
-pub struct Binding {
+/// Unpinned binding
+pub struct RawBinding {
     /// Node connected to dependency tracker
     #[pin]
     to_tracker: Node<TrackerBinding>,
 }
 
-impl Binding {
+impl RawBinding {
     pub(crate) fn new() -> Self {
         Self {
             to_tracker: Node::new(TrackerBinding::new()),
@@ -40,7 +43,7 @@ impl Binding {
     }
 }
 
-impl Default for Binding {
+impl Default for RawBinding {
     fn default() -> Self {
         Self::new()
     }
@@ -48,27 +51,27 @@ impl Default for Binding {
 
 #[derive(Debug)]
 pub struct BindingArray<const SIZE: usize> {
-    inner: [Binding; SIZE],
+    inner: [RawBinding; SIZE],
 }
 
 impl<const SIZE: usize> BindingArray<SIZE> {
     fn new() -> Self {
         Self {
-            inner: array::from_fn(|_| Binding::new()),
+            inner: array::from_fn(|_| RawBinding::new()),
         }
     }
 
-    pub fn inner(&self) -> &[Binding; SIZE] {
+    pub fn inner(&self) -> &[RawBinding; SIZE] {
         &self.inner
     }
 
     #[inline]
-    pub fn get_const<const INDEX: usize>(self: Pin<&Self>) -> Pin<&Binding> {
+    pub fn get_const<const INDEX: usize>(self: Pin<&Self>) -> Binding {
         // SAFETY: perform structural pinning
         unsafe { Pin::new_unchecked(&self.get_ref().inner[INDEX]) }
     }
 
-    pub fn iter(self: Pin<&Self>) -> impl Iterator<Item = Pin<&Binding>> {
+    pub fn iter(self: Pin<&Self>) -> impl Iterator<Item = Binding> {
         // SAFETY: perform structural pinning
         self.get_ref()
             .inner

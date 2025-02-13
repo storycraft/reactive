@@ -10,8 +10,7 @@ use palette::Srgba;
 use reactive::{
     create_element,
     reactivity_winit::state::{StateCell, StateRefCell},
-    skia_safe,
-    taffy::Style,
+    skia_safe, taffy,
     window::ui::Ui,
     SetupFn, WithChild,
 };
@@ -20,11 +19,13 @@ use util::use_mut;
 
 #[derive(Builder)]
 pub struct Block<'a> {
-    layout: Option<Pin<&'a StateRefCell<Style>>>,
+    layout: Option<Pin<&'a StateRefCell<taffy::Style>>>,
     #[builder(default)]
     fill: Fill<'a>,
     #[builder(default)]
     border: Border<'a>,
+    #[builder(default)]
+    text: Text<'a>,
 }
 
 #[derive(Builder, Default)]
@@ -38,25 +39,32 @@ pub struct Border<'a> {
     thickness: Option<Pin<&'a StateCell<f32>>>,
 }
 
+#[derive(Builder, Default)]
+pub struct Text<'a> {
+    content: Option<Pin<&'a StateCell<String>>>,
+}
+
 impl<'a> Block<'a> {
     fn start<Child: SetupFn + 'a>(self, child: Child) -> impl SetupFn<Output = Child::Output> + 'a {
         create_element(
             BlockElement::new(),
-            Style::DEFAULT,
+            taffy::Style::DEFAULT,
             move |ui: Ui| async move {
                 let id = ui.current_id();
 
-                macro_rules! wire {
+                macro_rules! wire_ui {
                     ($name:ident = $prop:expr => $($tt:tt)*) => {
                         let_effect!({
                             if let Some($name) = $prop {
+                                ui.request_redraw();
+
                                 $($tt)*
                             }
                         });
                     };
 
                     ($element:ident, $name:ident = $prop:expr => $($tt:tt)*) => {
-                        wire!($name = $prop => {
+                        wire_ui!($name = $prop => {
                             use_mut::<BlockElement>(
                                 &ui,
                                 id,
@@ -68,11 +76,11 @@ impl<'a> Block<'a> {
                     };
                 }
 
-                wire!(layout = self.layout => {
+                wire_ui!(layout = self.layout => {
                     ui.set_style(id, layout.get($).clone());
                 });
 
-                wire!(element, color = self.fill.color => {
+                wire_ui!(element, color = self.fill.color => {
                     let color = color.get($);
                     element.fill_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
@@ -80,7 +88,7 @@ impl<'a> Block<'a> {
                     );
                 });
 
-                wire!(element, color = self.border.color => {
+                wire_ui!(element, color = self.border.color => {
                     let color = color.get($);
                     element.stroke_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
@@ -88,8 +96,12 @@ impl<'a> Block<'a> {
                     );
                 });
 
-                wire!(element, thickness = self.border.thickness => {
+                wire_ui!(element, thickness = self.border.thickness => {
                     element.stroke_paint.set_stroke_width(thickness.get($));
+                });
+
+                wire_ui!(element, text = self.text.content => {
+                    // element.text = Some(skia_safe::TextBlobBuilder::new().alloc_run_text(font, count, offset, text_byte_count, bounds))
                 });
 
                 child.show(ui.clone()).await

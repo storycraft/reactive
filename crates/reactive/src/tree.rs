@@ -104,8 +104,8 @@ impl Tree {
         self.size = (width, height);
     }
 
-    pub fn redraw(&mut self, canvas: &Canvas) {
-        fn redraw_inner(canvas: &Canvas, taffy: &TaffyElementTree, parent: NodeId) {
+    pub fn draw(&mut self, canvas: &Canvas) {
+        fn draw_inner(canvas: &Canvas, taffy: &TaffyElementTree, parent: NodeId) {
             for child in taffy.child_ids(parent) {
                 let Some(cx) = taffy.get_node_context(child) else {
                     continue;
@@ -118,7 +118,7 @@ impl Tree {
                 cx.draw(canvas, layout);
 
                 cx.pre_child_draw(canvas);
-                redraw_inner(canvas, taffy, child);
+                draw_inner(canvas, taffy, child);
                 cx.post_child_draw(canvas);
 
                 canvas.translate((-layout.location.x, -layout.location.y));
@@ -137,7 +137,7 @@ impl Tree {
             )
             .unwrap();
 
-        redraw_inner(canvas, &self.taffy, self.root.0);
+        draw_inner(canvas, &self.taffy, self.root.0);
     }
 }
 

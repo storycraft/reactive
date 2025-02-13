@@ -34,7 +34,7 @@ impl<T> Resource<T> {
         });
     }
 
-    pub fn get(&self, binding: Pin<&Binding>) -> Option<T> {
+    pub fn get(&self, binding: Binding) -> Option<T> {
         self.state.as_ref().take_get(binding)
     }
 }

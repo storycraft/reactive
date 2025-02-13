@@ -9,7 +9,8 @@ pub use winit;
 use core::future::Future;
 use event_loop::context::AppCx;
 
-pub fn spawn<Fut>(fut: Fut) -> Task<Fut::Output>
+// TODO:: multi threaded
+pub fn spawn_ui<Fut>(fut: Fut) -> Task<Fut::Output>
 where
     Fut: Future + 'static,
 {

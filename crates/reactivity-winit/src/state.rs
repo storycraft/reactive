@@ -40,8 +40,13 @@ impl<T> StateCell<T> {
 
 impl<T: Default> StateCell<T> {
     #[inline]
-    pub fn take_get(self: Pin<&Self>, binding: Pin<&Binding>) -> T {
+    pub fn take_get(self: Pin<&Self>, binding: Binding) -> T {
         self.project_ref().tracker.register(binding);
+        self.take_get_untracked()
+    }
+
+    #[inline]
+    pub fn take_get_untracked(self: Pin<&Self>) -> T {
         self.value.take()
     }
 
@@ -59,7 +64,7 @@ impl<T: Default> StateCell<T> {
 
 impl<T: Copy> StateCell<T> {
     #[inline]
-    pub fn get(self: Pin<&Self>, binding: Pin<&Binding>) -> T {
+    pub fn get(self: Pin<&Self>, binding: Binding) -> T {
         self.project_ref().tracker.register(binding);
         self.get_untracked()
     }
@@ -95,7 +100,7 @@ impl<T> StateRefCell<T> {
         *self.value.borrow_mut() = value;
     }
 
-    pub fn get(self: Pin<&Self>, binding: Pin<&Binding>) -> cell::Ref<'_, T> {
+    pub fn get(self: Pin<&Self>, binding: Binding) -> cell::Ref<'_, T> {
         let this = self.project_ref();
         this.tracker.register(binding);
         this.value.borrow()

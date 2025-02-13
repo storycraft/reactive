@@ -24,7 +24,7 @@ impl DependencyTracker {
         }
     }
 
-    pub fn register(self: Pin<&Self>, binding: Pin<&Binding>) {
+    pub fn register(self: Pin<&Self>, binding: Binding) {
         self.project_ref()
             .dependents
             .push_front(binding.to_tracker());

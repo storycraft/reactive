@@ -51,15 +51,24 @@ async fn async_main() {
         }
     });
 
-    let_effect!({
-        if let Some(window) = &*win.window().get($) {
-            println!("window loaded {:?}", window);
-        }
-    });
-
     win.show(|ui: Ui| async move {
+        let effect_ui = ui.clone();
+        let_effect!({
+            let _ = effect_ui.with_window(|window| {
+                println!("window loaded {:?}", window);
+            }, $);
+        });
+
         join!(
-            flash_block().show(ui.clone()),
+            flash_block()
+                .child(|ui: Ui| async move {
+                    join!(
+                        flash_block().show(ui.clone()),
+                        flash_block().show(ui.clone()),
+                        flash_block().show(ui)
+                    )
+                })
+                .show(ui.clone()),
             flash_block().show(ui.clone()),
             flash_block().show(ui),
         );
@@ -70,7 +79,7 @@ async fn async_main() {
 fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
     |ui, child| async move {
         let layout = pin!(StateRefCell::new(Style {
-            size: Size::from_percent(0.1, 0.1),
+            size: Size::from_percent(0.3, 0.3),
             ..Style::DEFAULT
         }));
 
