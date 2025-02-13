@@ -7,7 +7,7 @@ use reactive::{
     window::{ui::Ui, UiWindow},
     SetupFn, SetupFnWithChildExt, WithChild,
 };
-use reactive_widgets::{
+use reactive_primitive::{
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
     Block, Fill, Text,
 };
