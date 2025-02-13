@@ -9,7 +9,7 @@ license.workspace = true
 reactivity.workspace = true
 reactivity-winit.workspace = true
 reactive.workspace = true
-reactive-widgets.workspace = true
+reactive-primitive.workspace = true
 
 winit = "0.30.9"
 glutin-winit = "0.5.0"

@@ -1,5 +1,5 @@
 [package]
-name = "reactive-widgets"
+name = "reactive-primitive"
 version.workspace = true
 edition.workspace = true
 authors = ["storycraft <storycraft@pancake.sh>"]
