@@ -4,7 +4,7 @@ use futures::join;
 use rand::random_range;
 use reactive::{
     taffy::{Size, Style},
-    window::{ui::Ui, GuiWindow},
+    window::{ui::Ui, UiWindow},
     SetupFn, SetupFnWithChildExt, WithChild,
 };
 use reactive_widgets::{
@@ -27,7 +27,7 @@ fn main() {
 }
 
 pub async fn async_main() {
-    let win = pin!(GuiWindow::new());
+    let win = pin!(UiWindow::new());
     let win = win.into_ref();
 
     let input = pin!(StateCell::new(0));

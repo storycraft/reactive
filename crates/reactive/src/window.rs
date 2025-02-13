@@ -17,13 +17,13 @@ use ui::Ui;
 
 use crate::{tree::Tree, SetupFn};
 
-pub struct GuiWindow {
+pub struct UiWindow {
     attr: WindowAttributes,
     state: RefCell<WindowState>,
     ui: Ui,
 }
 
-impl GuiWindow {
+impl UiWindow {
     pub fn new() -> Self {
         let attr = WindowAttributes::default();
         let builder = DisplayBuilder::new().with_window_attributes(Some(attr.clone()));
@@ -40,13 +40,13 @@ impl GuiWindow {
     }
 }
 
-impl Default for GuiWindow {
+impl Default for UiWindow {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl WinitWindow for GuiWindow {
+impl WinitWindow for UiWindow {
     fn window_id(self: Pin<&Self>) -> Option<WindowId> {
         let WindowState::Init(Context { id, .. }) = *self.state.borrow() else {
             return None;
