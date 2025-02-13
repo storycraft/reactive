@@ -9,7 +9,7 @@ use reactive::{
 };
 use reactive_widgets::{
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
-    Block, Fill, Text, TextStyle,
+    Block, Fill, Text,
 };
 use reactivity::let_effect;
 use reactivity_winit::{
@@ -23,7 +23,7 @@ use winit::event_loop::EventLoopBuilder;
 fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     let _guard = rt.enter();
-    run(EventLoopBuilder::default(), async_main());
+    run(EventLoopBuilder::default(), Box::pin(async_main()));
 }
 
 pub async fn async_main() {
@@ -114,12 +114,7 @@ fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
         Block::builder()
             .layout(layout.into_ref())
             .fill(Fill::builder().color(color).build())
-            .text(
-                Text::builder()
-                    .content(text)
-                    .style(TextStyle::builder().size(size).build())
-                    .build(),
-            )
+            .text(Text::builder().content(text).size(size).build())
             .build()
             .child(child)
             .show(ui)

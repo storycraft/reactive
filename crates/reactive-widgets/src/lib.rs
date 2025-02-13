@@ -42,12 +42,6 @@ pub struct Border<'a> {
 #[derive(Builder, Default)]
 pub struct Text<'a> {
     content: Option<Pin<&'a StateRefCell<String>>>,
-    #[builder(default)]
-    style: TextStyle<'a>,
-}
-
-#[derive(Builder, Default)]
-pub struct TextStyle<'a> {
     color: Option<Pin<&'a StateCell<Srgba>>>,
     stroke_color: Option<Pin<&'a StateCell<Srgba>>>,
     size: Option<Pin<&'a StateCell<f32>>>,
@@ -109,21 +103,28 @@ impl<'a> Block<'a> {
                     element.stroke_paint.set_stroke_width(thickness.get($));
                 });
 
-                wire_ui!(element, (text, size) = self.text.content.zip(self.text.style.size) => {
+                wire_ui!(element, text = self.text.content => {
                     let text = &*text.get($);
-                    let size = size.get($);
+                    let font = element.font.get_or_insert_with(|| skia_safe::Font::from_typeface(
+                        skia_safe::FontMgr::new()
+                            .legacy_make_typeface(None, skia_safe::FontStyle::normal()).unwrap(),
+                            self.text.size.map(|cell| cell.get_untracked())
+                    ));
 
-                    element.text = skia_safe::TextBlob::from_str(
+                    element.blob = skia_safe::TextBlob::from_str(
                         text,
-                        &skia_safe::Font::from_typeface(
-                            skia_safe::FontMgr::new()
-                                .legacy_make_typeface(None, skia_safe::FontStyle::normal()).unwrap(),
-                            Some(size)
-                        )
+                        font
                     );
                 });
 
-                wire_ui!(element, color = self.text.style.color => {
+                wire_ui!(element, size = self.text.size => {
+                    let size = size.get($);
+                    if let Some(font) = element.font.as_mut() {
+                        font.set_size(size);
+                    }
+                });
+
+                wire_ui!(element, color = self.text.color => {
                     let color = color.get($);
                     element.text_fill_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
@@ -131,7 +132,7 @@ impl<'a> Block<'a> {
                     );
                 });
 
-                wire_ui!(element, color = self.text.style.stroke_color => {
+                wire_ui!(element, color = self.text.stroke_color => {
                     let color = color.get($);
                     element.text_stroke_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
