@@ -19,33 +19,31 @@ pub trait Effect {
 }
 
 /// Pinned connection to dependency tracker from a effect
-pub type Binding<'a> = Pin<&'a RawBinding>;
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct Binding<'a>(Pin<&'a RawBinding>);
+
+impl<'a> Binding<'a> {
+    /// Entry connecting to dependency tracker
+    pub(crate) fn to_tracker(self) -> &'a Entry<TrackerBinding> {
+        self.0.project_ref().to_tracker.entry()
+    }
+}
 
 #[derive(Debug)]
 #[pin_project]
 /// Unpinned binding
-pub struct RawBinding {
+struct RawBinding {
     /// Node connected to dependency tracker
     #[pin]
     to_tracker: Node<TrackerBinding>,
 }
 
 impl RawBinding {
-    pub(crate) fn new() -> Self {
+    fn new() -> Self {
         Self {
             to_tracker: Node::new(TrackerBinding::new()),
         }
-    }
-
-    /// Entry connecting to dependency tracker
-    pub(crate) fn to_tracker(self: Pin<&Self>) -> &Entry<TrackerBinding> {
-        self.project_ref().to_tracker.entry()
-    }
-}
-
-impl Default for RawBinding {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -61,14 +59,10 @@ impl<const SIZE: usize> BindingArray<SIZE> {
         }
     }
 
-    pub fn inner(&self) -> &[RawBinding; SIZE] {
-        &self.inner
-    }
-
     #[inline]
     pub fn get_const<const INDEX: usize>(self: Pin<&Self>) -> Binding {
         // SAFETY: perform structural pinning
-        unsafe { Pin::new_unchecked(&self.get_ref().inner[INDEX]) }
+        Binding(unsafe { Pin::new_unchecked(&self.get_ref().inner[INDEX]) })
     }
 
     pub fn iter(self: Pin<&Self>) -> impl Iterator<Item = Binding> {
@@ -76,7 +70,7 @@ impl<const SIZE: usize> BindingArray<SIZE> {
         self.get_ref()
             .inner
             .iter()
-            .map(|binding| unsafe { Pin::new_unchecked(binding) })
+            .map(|binding| Binding(unsafe { Pin::new_unchecked(binding) }))
     }
 }
 
