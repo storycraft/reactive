@@ -1,7 +1,5 @@
 use core::{
-    cell::{self, Cell, RefCell},
-    fmt::Debug,
-    pin::Pin,
+    cell::{self, Cell, RefCell}, fmt::Debug, ops::{Deref, DerefMut}, pin::Pin
 };
 
 use pin_project::pin_project;
@@ -123,12 +121,24 @@ impl<T> StateRefCell<T> {
     }
 }
 
-#[derive(Debug, derive_more::Deref, derive_more::DerefMut)]
+#[derive(Debug)]
 pub struct Guard<'a, T> {
     tracker: Pin<&'a DependencyTracker>,
-    #[deref]
-    #[deref_mut]
     inner: cell::RefMut<'a, T>,
+}
+
+impl<T> Deref for Guard<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
+}
+
+impl<T> DerefMut for Guard<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.inner
+    }
 }
 
 impl<T> Drop for Guard<'_, T> {
