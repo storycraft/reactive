@@ -1,19 +1,27 @@
-use core::{pin::Pin, task::Waker};
-use std::rc::Rc;
+use core::{cell::Cell, pin::Pin, task::Waker};
 
 use async_executor::LocalExecutor;
 use pin_project::pin_project;
 use reactivity::{define_safe_list, queue::Queue};
 use scoped_tls_hkt::scoped_thread_local;
+use winit::event_loop::ActiveEventLoop;
 
 use super::handler::WinitWindow;
 
-scoped_thread_local!(static CX: Pin<Rc<AppCx>>);
+scoped_thread_local!(static CX: for<'a> Context<'a>);
 
 define_safe_list!(pub HandlerList = Pin<&dyn WinitWindow>);
 
+#[derive(Clone, Copy)]
+#[non_exhaustive]
+pub struct Context<'a> {
+    pub app: Pin<&'a AppShared>,
+    pub el: &'a ActiveEventLoop,
+}
+
 #[pin_project]
-pub struct AppCx {
+pub struct AppShared {
+    status: Cell<EventLoopStatus>,
     executor: LocalExecutor<'static>,
     #[pin]
     handlers: HandlerList,
@@ -21,13 +29,22 @@ pub struct AppCx {
     queue: Queue,
 }
 
-impl AppCx {
+impl AppShared {
     pub fn new(waker: Option<Waker>) -> Self {
         Self {
+            status: Cell::new(EventLoopStatus::Suspended),
             executor: LocalExecutor::new(),
             handlers: HandlerList::new(),
             queue: Queue::new(waker),
         }
+    }
+
+    pub fn status(&self) -> EventLoopStatus {
+        self.status.get()
+    }
+
+    pub(super) fn set_status(&self, status: EventLoopStatus) {
+        self.status.set(status);
     }
 
     pub fn executor(&self) -> &LocalExecutor<'static> {
@@ -41,16 +58,22 @@ impl AppCx {
     pub fn queue(self: Pin<&Self>) -> Pin<&Queue> {
         self.project_ref().queue
     }
+}
 
-    pub fn set<R>(self: &Pin<Rc<AppCx>>, f: impl FnOnce() -> R) -> R {
-        CX.set(self, f)
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventLoopStatus {
+    Resumed,
+    Suspended,
+}
 
-    pub fn is_set() -> bool {
-        CX.is_set()
-    }
+pub fn set<R>(app: Pin<&AppShared>, el: &ActiveEventLoop, f: impl FnOnce() -> R) -> R {
+    CX.set(Context { app, el }, f)
+}
 
-    pub fn with<R>(f: impl FnOnce(&Pin<Rc<AppCx>>) -> R) -> R {
-        CX.with(f)
-    }
+pub fn is_set() -> bool {
+    CX.is_set()
+}
+
+pub fn with<R>(f: impl FnOnce(Context) -> R) -> R {
+    CX.with(f)
 }

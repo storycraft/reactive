@@ -9,7 +9,7 @@ use pin_project::pin_project;
 
 use reactivity::{effect::Binding, tracker::DependencyTracker};
 
-use crate::event_loop::context::AppCx;
+use crate::event_loop::context;
 
 #[derive(derive_more::Debug)]
 #[pin_project]
@@ -151,9 +151,9 @@ impl<T> Drop for Guard<'_, T> {
 }
 
 fn notify(tracker: Pin<&DependencyTracker>) {
-    if AppCx::is_set() {
-        AppCx::with(move |cx| {
-            tracker.notify(cx.as_ref().queue());
+    if context::is_set() {
+        context::with(move |cx| {
+            tracker.notify(cx.app.queue());
         });
     }
 }

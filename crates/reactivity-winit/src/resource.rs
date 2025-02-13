@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use reactivity::effect::Binding;
 
-use crate::{event_loop::context::AppCx, state::StateCell};
+use crate::{event_loop::context, state::StateCell};
 
 pub struct Resource<T> {
     state: Pin<Rc<StateCell<Option<T>>>>,
@@ -21,10 +21,11 @@ impl<T> Resource<T> {
         Fut: Future<Output = T> + 'static,
         T: 'static,
     {
-        AppCx::with(|cx| {
+        context::with(|cx| {
             let state = self.state.clone();
 
-            cx.executor()
+            cx.app
+                .executor()
                 .spawn({
                     async move {
                         state.as_ref().set(Some(fut.await));

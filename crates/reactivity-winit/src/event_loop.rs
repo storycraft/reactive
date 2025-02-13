@@ -8,7 +8,7 @@ use core::{
 };
 use std::rc::Rc;
 
-use context::AppCx;
+use context::{AppShared, EventLoopStatus};
 use waker_fn::waker_fn;
 use winit::{
     application::ApplicationHandler,
@@ -19,7 +19,7 @@ use winit::{
 
 struct App<'a, Fut> {
     waker: Waker,
-    cx: Pin<Rc<AppCx>>,
+    cx: Pin<Rc<AppShared>>,
     fut: Pin<&'a mut Fut>,
 }
 
@@ -27,8 +27,9 @@ impl<Fut> App<'_, Fut>
 where
     Fut: Future<Output = ()>,
 {
-    fn poll(&mut self) -> Poll<Fut::Output> {
-        AppCx::set(&self.cx, || {
+    fn poll(&mut self, el: &ActiveEventLoop) -> Poll<Fut::Output> {
+        let cx = self.cx.as_ref();
+        context::set(cx, el, || {
             if self
                 .fut
                 .as_mut()
@@ -38,9 +39,7 @@ where
                 return Poll::Ready(());
             }
 
-            let cx = self.cx.as_ref();
             cx.queue().run(&self.waker);
-
             Poll::Pending
         })
     }
@@ -51,8 +50,13 @@ where
     Fut: Future<Output = ()>,
 {
     fn resumed(&mut self, el: &ActiveEventLoop) {
-        AppCx::set(&self.cx, || {
-            self.cx.as_ref().handlers().iter(|mut iter| {
+        let cx = self.cx.as_ref();
+        if cx.status() == EventLoopStatus::Suspended {
+            cx.set_status(EventLoopStatus::Resumed);
+        }
+
+        context::set(cx, el, || {
+            cx.handlers().iter(|mut iter| {
                 while let Some(entry) = iter.next() {
                     entry.value().resumed(el);
                 }
@@ -61,8 +65,10 @@ where
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, window_id: WindowId, mut event: WindowEvent) {
-        AppCx::set(&self.cx, || {
-            self.cx.as_ref().handlers().iter(|mut iter| {
+        let cx = self.cx.as_ref();
+
+        context::set(cx, el, || {
+            cx.handlers().iter(|mut iter| {
                 while let Some(entry) = iter.next() {
                     let handler = entry.value();
                     if handler
@@ -78,8 +84,14 @@ where
     }
 
     fn suspended(&mut self, el: &ActiveEventLoop) {
-        AppCx::set(&self.cx, || {
-            self.cx.as_ref().handlers().iter(|mut iter| {
+        let cx = self.cx.as_ref();
+
+        if cx.status() == EventLoopStatus::Resumed {
+            cx.set_status(EventLoopStatus::Suspended);
+        }
+
+        context::set(cx, el, || {
+            cx.handlers().iter(|mut iter| {
                 while let Some(entry) = iter.next() {
                     entry.value().suspended(el);
                 }
@@ -88,7 +100,7 @@ where
     }
 
     fn user_event(&mut self, el: &ActiveEventLoop, _: ()) {
-        if self.poll().is_ready() {
+        if self.poll(el).is_ready() {
             el.exit();
         }
     }
@@ -98,23 +110,21 @@ where
 pub fn run<Fut: Future<Output = ()>>(mut el: EventLoopBuilder<()>, fut: Fut) {
     // TODO:: error handling
     let el = el.build().unwrap();
+    let proxy = el.create_proxy();
 
-    let waker = waker_fn({
-        let proxy = el.create_proxy();
-        move || {
-            let _ = proxy.send_event(());
-        }
+    // Poll task on start
+    let _ = proxy.send_event(());
+
+    let waker = waker_fn(move || {
+        let _ = proxy.send_event(());
     });
 
-    let cx = Rc::pin(AppCx::new(Some(waker.clone())));
+    let cx = Rc::pin(AppShared::new(Some(waker.clone())));
 
     let fut_cx = cx.clone();
     let fut = pin!(fut_cx.executor().run(fut));
 
     let mut app = App { cx, waker, fut };
-    if app.poll().is_ready() {
-        return;
-    }
 
     // TODO:: error handling
     el.run_app(&mut app).unwrap();

@@ -6,7 +6,7 @@ use core::{
 use reactivity::list::Node;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
 
-use super::context::AppCx;
+use super::context::{self, EventLoopStatus};
 
 pub trait WinitWindow {
     fn window_id(self: Pin<&Self>) -> Option<WindowId>;
@@ -20,8 +20,12 @@ pub trait WinitWindow {
 
 pub async fn add<Fut: Future>(this: Pin<&impl WinitWindow>, fut: Fut) -> Fut::Output {
     let node = pin!(Node::new(this as Pin<&dyn WinitWindow>));
-    AppCx::with(|cx| {
-        cx.as_ref().handlers().push_front(node.into_ref().entry());
+    context::with(|cx| {
+        cx.app.handlers().push_front(node.into_ref().entry());
+
+        if cx.app.status() == EventLoopStatus::Resumed {
+            this.resumed(cx.el);
+        }
     });
 
     fut.await
