@@ -2,7 +2,7 @@ mod element;
 
 use core::pin::Pin;
 
-use crate::util::create_wire_macro;
+use crate::util::{create_wire_macro, use_mut};
 use bon::Builder;
 use element::TextElement;
 use palette::Srgba;
@@ -32,18 +32,22 @@ impl<'a> Text<'a> {
 
                 create_wire_macro!(wire, ui, id);
 
-                wire!(element: TextElement, text = self.content => {
-                    let text = &*text.get($);
-                    let font = element.font.get_or_insert_with(|| skia_safe::Font::from_typeface(
-                        skia_safe::FontMgr::new()
-                            .legacy_make_typeface(None, skia_safe::FontStyle::normal()).unwrap(),
-                            self.size.map(|cell| cell.get_untracked())
-                    ));
+                wire!(text = self.content => {
+                    use_mut(&ui, id, |mut element: Pin<&mut TextElement>| {
+                        let text = &*text.get($);
+                        let font = element.font.get_or_insert_with(|| skia_safe::Font::from_typeface(
+                            skia_safe::FontMgr::new()
+                                .legacy_make_typeface(None, skia_safe::FontStyle::normal()).unwrap(),
+                                self.size.map(|cell| cell.get_untracked())
+                        ));
 
-                    element.blob = skia_safe::TextBlob::from_str(
-                        text,
-                        font
-                    );
+                        element.blob = skia_safe::TextBlob::from_str(
+                            text,
+                            font
+                        );
+                    });
+
+                    ui.request_layout();
                 });
 
                 wire!(element: TextElement, size = self.size => {
