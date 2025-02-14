@@ -8,8 +8,9 @@ use reactive::{
     SetupFn, SetupFnWithChildExt, WithChild,
 };
 use reactive_primitive::{
+    block::{Block, Fill},
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
-    Block, Fill, Text,
+    text::Text,
 };
 use reactivity::let_effect;
 use reactivity_winit::{
@@ -114,9 +115,14 @@ fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
         Block::builder()
             .layout(layout.into_ref())
             .fill(Fill::builder().color(color).build())
-            .text(Text::builder().content(text).size(size).build())
             .build()
-            .child(child)
+            .child(
+                Text::builder()
+                    .content(text)
+                    .size(size)
+                    .build()
+                    .child(child),
+            )
             .show(ui)
             .await
     }
