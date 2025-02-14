@@ -70,6 +70,10 @@ impl Ui {
         self.inner.tree.borrow_mut().resize(width, height);
     }
 
+    pub fn request_layout(&self) {
+        self.inner.tree.borrow_mut().mark_dirty(self.current);
+    }
+
     pub fn request_redraw(&self) {
         if !self.inner.draw_queued.get() {
             self.inner.draw_queued.set(true);

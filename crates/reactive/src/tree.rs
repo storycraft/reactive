@@ -139,6 +139,11 @@ impl Tree {
 
         draw_inner(canvas, &self.taffy, self.root.0);
     }
+
+    // TODO:: error
+    pub fn mark_dirty(&mut self, id: ElementId) {
+        let _ = self.taffy.mark_dirty(id.0);
+    }
 }
 
 impl Default for Tree {
