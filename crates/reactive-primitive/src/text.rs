@@ -28,12 +28,10 @@ impl<'a> Text<'a> {
             TextElement::new(),
             taffy::Style::DEFAULT,
             move |ui: Ui| async move {
-                let id = ui.current_id();
-
-                create_wire_macro!(wire, ui, id);
+                create_wire_macro!(wire, ui);
 
                 wire!(text = self.content => {
-                    use_mut(&ui, id, |mut element: Pin<&mut TextElement>| {
+                    use_mut(&ui, |mut element: Pin<&mut TextElement>| {
                         let text = &*text.get($);
                         let font = element.font.get_or_insert_with(|| skia_safe::Font::from_typeface(
                             skia_safe::FontMgr::new()

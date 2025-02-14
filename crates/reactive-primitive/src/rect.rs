@@ -33,12 +33,10 @@ impl<'a> Rect<'a> {
             RectElement::new(),
             taffy::Style::DEFAULT,
             move |ui: Ui| async move {
-                let id = ui.current_id();
-
-                create_wire_macro!(wire, ui, id);
+                create_wire_macro!(wire, ui);
 
                 wire!(layout = self.layout => {
-                    ui.set_style(id, layout.get($).clone());
+                    ui.set_style(layout.get($).clone());
                 });
 
                 wire!(element: RectElement, color = self.fill.color => {

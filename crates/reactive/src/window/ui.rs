@@ -145,8 +145,8 @@ impl Ui {
         self.inner.tree.borrow_mut().remove(id)
     }
 
-    pub fn set_style(&self, id: ElementId, style: taffy::Style) {
-        self.inner.tree.borrow_mut().set_style(id, style);
+    pub fn set_style(&self, style: taffy::Style) {
+        self.inner.tree.borrow_mut().set_style(self.current, style);
     }
 }
 
