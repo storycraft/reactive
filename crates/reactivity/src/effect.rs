@@ -16,7 +16,7 @@ pub struct Effect<const BINDINGS: usize, F> {
     #[pin]
     to_queue: Node<EffectFnPtr>,
     #[pin]
-    inner: Inner<BINDINGS, F>,
+    inner: Aliasable<Inner<BINDINGS, F>>,
 }
 
 impl<const BINDINGS: usize, F> Effect<BINDINGS, F>
@@ -26,16 +26,19 @@ where
     pub fn new(f: F) -> Self {
         Self {
             to_queue: Node::new(EffectFnPtr(NonNull::from(&mut ()))),
-            inner: Inner {
+            inner: Aliasable::new(Inner {
                 bindings: BindingArray::new(),
-                f: Aliasable::new(UnsafeCell::new(f)),
-            },
+                f: UnsafeCell::new(f),
+            }),
         }
     }
 
     pub fn init(self: Pin<&mut Self>) {
         let mut this = self.project();
-        let inner = this.inner.as_ref();
+        // aliasable pin projection
+        let inner = unsafe {
+            Pin::new_unchecked(this.inner.as_ref().get())
+        };
 
         // Initialize node to queue
         this.to_queue.set(Node::new(EffectFnPtr(
@@ -107,7 +110,7 @@ struct Inner<const BINDINGS: usize, F> {
     #[pin]
     bindings: BindingArray<BINDINGS>,
     #[pin]
-    f: Aliasable<UnsafeCell<F>>,
+    f: UnsafeCell<F>,
 }
 
 trait EffectFn {
@@ -123,7 +126,7 @@ where
         let this = self.project_ref();
         // SAFETY: F is valid to dereference, no multiple references can be obtained
         unsafe {
-            (*this.f.get().get())(this.bindings);
+            (*this.f.get())(this.bindings);
         }
     }
 }
