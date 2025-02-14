@@ -1,21 +1,55 @@
 use core::{
     array,
     cell::{Cell, UnsafeCell},
-    future::{pending, Future},
     pin::{pin, Pin},
     ptr::NonNull,
-    task::Context,
 };
 
-use noop_waker::noop_waker;
 use pin_project::pin_project;
 use pinned_aliasable::Aliasable;
 
 use crate::list::{Entry, Node};
 
-pub trait Effect {
-    /// Initialize effect
-    fn init(self: Pin<&mut Self>);
+#[derive(Debug)]
+#[pin_project]
+pub struct Effect<const BINDINGS: usize, F> {
+    #[pin]
+    to_queue: Node<EffectFnPtr>,
+    #[pin]
+    inner: Inner<BINDINGS, F>,
+}
+
+impl<const BINDINGS: usize, F> Effect<BINDINGS, F>
+where
+    F: FnMut(Pin<&BindingArray<BINDINGS>>),
+{
+    pub fn new(f: F) -> Self {
+        Self {
+            to_queue: Node::new(EffectFnPtr(NonNull::from(&mut ()))),
+            inner: Inner {
+                bindings: BindingArray::new(),
+                f: Aliasable::new(UnsafeCell::new(f)),
+            },
+        }
+    }
+
+    pub fn init(self: Pin<&mut Self>) {
+        let mut this = self.project();
+        let inner = this.inner.as_ref();
+
+        // Initialize node to queue
+        this.to_queue.set(Node::new(EffectFnPtr(
+            NonNull::new(&*inner as *const dyn EffectFn as *mut dyn EffectFn).unwrap(),
+        )));
+
+        // Initialize bindings
+        let entry = this.to_queue.as_ref().entry();
+        for binding in inner.project_ref().bindings.iter() {
+            binding.to_tracker().value().0.set(NonNull::from(entry));
+        }
+
+        inner.call();
+    }
 }
 
 /// Pinned connection to dependency tracker from a effect
@@ -31,23 +65,6 @@ impl<'a> Binding<'a> {
 }
 
 #[derive(Debug)]
-#[pin_project]
-/// Unpinned binding
-struct RawBinding {
-    /// Node connected to dependency tracker
-    #[pin]
-    to_tracker: Node<TrackerBinding>,
-}
-
-impl RawBinding {
-    fn new() -> Self {
-        Self {
-            to_tracker: Node::new(TrackerBinding::new()),
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct BindingArray<const SIZE: usize> {
     inner: [RawBinding; SIZE],
 }
@@ -55,7 +72,9 @@ pub struct BindingArray<const SIZE: usize> {
 impl<const SIZE: usize> BindingArray<SIZE> {
     fn new() -> Self {
         Self {
-            inner: array::from_fn(|_| RawBinding::new()),
+            inner: array::from_fn(|_| RawBinding {
+                to_tracker: Node::new(TrackerBinding::new()),
+            }),
         }
     }
 
@@ -65,7 +84,7 @@ impl<const SIZE: usize> BindingArray<SIZE> {
         Binding(unsafe { Pin::new_unchecked(&self.get_ref().inner[INDEX]) })
     }
 
-    pub fn iter(self: Pin<&Self>) -> impl Iterator<Item = Binding> {
+    fn iter(self: Pin<&Self>) -> impl Iterator<Item = Binding> {
         // SAFETY: perform structural pinning
         self.get_ref()
             .inner
@@ -74,65 +93,55 @@ impl<const SIZE: usize> BindingArray<SIZE> {
     }
 }
 
-#[must_use]
-pub fn effect<const BINDINGS: usize, R>(
-    mut f: impl FnMut(Pin<&BindingArray<BINDINGS>>) -> R,
-) -> impl Effect {
-    #[pin_project]
-    struct ImplEffect<Fut> {
-        #[pin]
-        fut: Fut,
-    }
+#[derive(Debug)]
+#[pin_project]
+struct Inner<const BINDINGS: usize, F> {
+    #[pin]
+    bindings: BindingArray<BINDINGS>,
+    #[pin]
+    f: Aliasable<UnsafeCell<F>>,
+}
 
-    impl<Fut> Effect for ImplEffect<Fut>
-    where
-        Fut: Future,
-    {
-        fn init(self: Pin<&mut Self>) {
-            let _ = self
-                .project()
-                .fut
-                .poll(&mut Context::from_waker(&noop_waker()));
+trait EffectFn {
+    // Call effect
+    fn call(self: Pin<&Self>);
+}
+
+impl<const BINDINGS: usize, F> EffectFn for Inner<BINDINGS, F>
+where
+    F: FnMut(Pin<&BindingArray<BINDINGS>>),
+{
+    fn call(self: Pin<&Self>) {
+        let this = self.project_ref();
+        // SAFETY: F is valid to dereference, no multiple references can be obtained
+        unsafe {
+            (*this.f.get().get())(this.bindings);
         }
     }
+}
 
-    ImplEffect {
-        fut: async move {
-            let bindings = pin!(BindingArray::<BINDINGS>::new());
-            let bindings = bindings.into_ref();
+impl EffectFn for () {
+    fn call(self: Pin<&Self>) {}
+}
 
-            let f = pin!(Aliasable::new(UnsafeCell::new(|| {
-                let _ = f(bindings);
-            })));
-            let f = f.into_ref().get().get() as *mut dyn FnMut();
-
-            let to_queue = pin!(Node::new(EffectFnPtr(f)));
-            let to_queue = to_queue.into_ref();
-
-            for binding in bindings.iter() {
-                binding
-                    .to_tracker()
-                    .value()
-                    .0
-                    .set(NonNull::from(to_queue.entry()));
-            }
-            to_queue.entry().value().call();
-
-            // Freeze forever here
-            pending::<()>().await;
-        },
-    }
+#[derive(Debug)]
+#[pin_project]
+/// Unpinned binding
+struct RawBinding {
+    /// Node connected to dependency tracker
+    #[pin]
+    to_tracker: Node<TrackerBinding>,
 }
 
 #[repr(transparent)]
 #[derive(Debug)]
-/// Self contained Effect fn pointer
-pub(crate) struct EffectFnPtr(*mut dyn FnMut());
+/// Self contained and pinned Effect fn pointer
+pub(super) struct EffectFnPtr(NonNull<dyn EffectFn>);
 
 impl EffectFnPtr {
     pub fn call(&self) {
         // SAFETY: pointer is always valid since entry is self referential with pointee
-        unsafe { (*self.0)() }
+        unsafe { Pin::new_unchecked(self.0.as_ref()).call() }
     }
 }
 
