@@ -24,7 +24,7 @@ impl TextElement {
 impl Element for TextElement {
     fn draw(self: Pin<&Self>, canvas: &skia_safe::Canvas, layout: &taffy::Layout) {
         if let Some(blob) = self.blob.as_ref() {
-            let origin = skia_safe::Point::new(0.0, layout.content_box_height());
+            let origin = skia_safe::Point::new(0.0, layout.size.height);
             if !self.fill_paint.nothing_to_draw() {
                 canvas.draw_text_blob(blob, origin, &self.fill_paint);
             }
