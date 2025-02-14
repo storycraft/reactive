@@ -18,19 +18,13 @@ pub struct Rect<'a> {
     layout: Option<Pin<&'a StateRefCell<taffy::Style>>>,
     #[builder(default)]
     fill: Fill<'a>,
-    #[builder(default)]
-    border: Border<'a>,
+    border_color: Option<Pin<&'a StateCell<Srgba>>>,
+    border_thickness: Option<Pin<&'a StateCell<f32>>>,
 }
 
 #[derive(Builder, Default)]
 pub struct Fill<'a> {
     color: Option<Pin<&'a StateCell<Srgba>>>,
-}
-
-#[derive(Builder, Default)]
-pub struct Border<'a> {
-    color: Option<Pin<&'a StateCell<Srgba>>>,
-    thickness: Option<Pin<&'a StateCell<f32>>>,
 }
 
 impl<'a> Rect<'a> {
@@ -55,7 +49,7 @@ impl<'a> Rect<'a> {
                     );
                 });
 
-                wire!(element: RectElement, color = self.border.color => {
+                wire!(element: RectElement, color = self.border_color => {
                     let color = color.get($);
                     element.stroke_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
@@ -63,7 +57,7 @@ impl<'a> Rect<'a> {
                     );
                 });
 
-                wire!(element: RectElement, thickness = self.border.thickness => {
+                wire!(element: RectElement, thickness = self.border_thickness => {
                     element.stroke_paint.set_stroke_width(thickness.get($));
                 });
 
