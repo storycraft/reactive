@@ -2,7 +2,7 @@ mod element;
 
 use crate::util::create_wire_macro;
 use bon::Builder;
-use element::BlockElement;
+use element::RectElement;
 use core::pin::Pin;
 use palette::Srgba;
 use reactive::{
@@ -14,7 +14,7 @@ use reactive::{
 };
 
 #[derive(Builder)]
-pub struct Block<'a> {
+pub struct Rect<'a> {
     layout: Option<Pin<&'a StateRefCell<taffy::Style>>>,
     #[builder(default)]
     fill: Fill<'a>,
@@ -33,10 +33,10 @@ pub struct Border<'a> {
     thickness: Option<Pin<&'a StateCell<f32>>>,
 }
 
-impl<'a> Block<'a> {
+impl<'a> Rect<'a> {
     fn show<Child: SetupFn + 'a>(self, child: Child) -> impl SetupFn<Output = Child::Output> + 'a {
         create_element(
-            BlockElement::new(),
+            RectElement::new(),
             taffy::Style::DEFAULT,
             move |ui: Ui| async move {
                 let id = ui.current_id();
@@ -47,7 +47,7 @@ impl<'a> Block<'a> {
                     ui.set_style(id, layout.get($).clone());
                 });
 
-                wire!(element: BlockElement, color = self.fill.color => {
+                wire!(element: RectElement, color = self.fill.color => {
                     let color = color.get($);
                     element.fill_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
@@ -55,7 +55,7 @@ impl<'a> Block<'a> {
                     );
                 });
 
-                wire!(element: BlockElement, color = self.border.color => {
+                wire!(element: RectElement, color = self.border.color => {
                     let color = color.get($);
                     element.stroke_paint.set_color4f(
                         skia_safe::Color4f::new(color.red, color.green, color.blue, color.alpha),
@@ -63,7 +63,7 @@ impl<'a> Block<'a> {
                     );
                 });
 
-                wire!(element: BlockElement, thickness = self.border.thickness => {
+                wire!(element: RectElement, thickness = self.border.thickness => {
                     element.stroke_paint.set_stroke_width(thickness.get($));
                 });
 
@@ -73,7 +73,7 @@ impl<'a> Block<'a> {
     }
 }
 
-impl<'a, Child> WithChild<Child> for Block<'a>
+impl<'a, Child> WithChild<Child> for Rect<'a>
 where
     Child: SetupFn + 'a,
 {

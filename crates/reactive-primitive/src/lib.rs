@@ -1,5 +1,5 @@
 pub(crate) mod util;
 pub mod text;
-pub mod block;
+pub mod rect;
 
 pub use palette;

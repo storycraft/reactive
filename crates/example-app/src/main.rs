@@ -8,7 +8,7 @@ use reactive::{
     SetupFn, SetupFnWithChildExt, WithChild,
 };
 use reactive_primitive::{
-    block::{Block, Fill},
+    rect::{Rect, Fill},
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
     text::Text,
 };
@@ -112,7 +112,7 @@ fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
             });
         });
 
-        Block::builder()
+        Rect::builder()
             .layout(layout.into_ref())
             .fill(Fill::builder().color(color).build())
             .build()
