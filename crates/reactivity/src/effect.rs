@@ -5,13 +5,13 @@ use core::{
     ptr::NonNull,
 };
 
-use pin_project::pin_project;
+use pin_project::{pin_project, pinned_drop};
 use pinned_aliasable::Aliasable;
 
 use crate::list::{Entry, Node};
 
 #[derive(Debug)]
-#[pin_project]
+#[pin_project(PinnedDrop)]
 pub struct Effect<const BINDINGS: usize, F> {
     #[pin]
     to_queue: Node<EffectFnPtr>,
@@ -50,6 +50,14 @@ where
 
         inner.call();
     }
+}
+
+// Although looks unnecessary, this drop implementation is a must.
+// Lenient drop check allow closures to be invalid before dropping entire effect. Leading to undefined behavior!
+// See https://doc.rust-lang.org/nomicon/dropck.html
+#[pinned_drop]
+impl<const BINDINGS: usize, F> PinnedDrop for Effect<BINDINGS, F> {
+    fn drop(self: Pin<&mut Self>) {}
 }
 
 /// Pinned connection to dependency tracker from a effect
