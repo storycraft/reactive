@@ -127,6 +127,9 @@ impl<T> PinnedDrop for Entry<T> {
     }
 }
 
+// Entry is safe to send if T is Send and not pinned
+unsafe impl<T: Send> Send for Entry<T> {}
+
 #[derive(derive_more::Debug)]
 #[pin_project]
 pub struct Node<T> {
