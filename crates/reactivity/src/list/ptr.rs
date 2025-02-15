@@ -1,4 +1,4 @@
-use core::ptr::{addr_of, NonNull};
+use core::ptr::NonNull;
 
 use super::{Entry, Link};
 
@@ -20,6 +20,6 @@ impl EntryPtr {
     }
 
     pub unsafe fn link(&self) -> &Link {
-        &*addr_of!((*self.0.as_ptr()).link)
+        &(*self.0.as_ptr()).link
     }
 }
