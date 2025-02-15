@@ -5,11 +5,12 @@ use rand::random_range;
 use reactive::{
     taffy::{Size, Style},
     window::{ui::Ui, UiWindow},
+    winit::event_loop::EventLoopBuilder,
     SetupFn, SetupFnWithChildExt, WithChild,
 };
 use reactive_primitive::{
-    rect::{Rect, Fill},
     palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
+    rect::{Fill, Rect},
     text::Text,
 };
 use reactivity::let_effect;
@@ -19,7 +20,6 @@ use reactivity_winit::{
     state::{StateCell, StateRefCell},
 };
 use tokio::time::sleep;
-use winit::event_loop::EventLoopBuilder;
 
 fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();

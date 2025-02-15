@@ -11,10 +11,7 @@ reactivity-winit.workspace = true
 reactive.workspace = true
 reactive-primitive.workspace = true
 
-winit = "0.30.9"
-glutin-winit = "0.5.0"
 pin-project = "1.1.9"
 tokio = { version = "1.43.0", features = ["full"] }
-skia-safe = "0.81.0"
 futures = "0.3.31"
 rand = "0.9.0"
