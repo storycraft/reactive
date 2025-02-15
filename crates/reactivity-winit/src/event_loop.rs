@@ -56,8 +56,8 @@ where
         }
 
         context::set(cx, el, || {
-            cx.handlers().iter(|mut iter| {
-                while let Some(entry) = iter.next() {
+            cx.handlers().iter(|iter| {
+                for entry in iter {
                     entry.value().resumed(el);
                 }
             });
@@ -68,8 +68,8 @@ where
         let cx = self.cx.as_ref();
 
         context::set(cx, el, || {
-            cx.handlers().iter(|mut iter| {
-                while let Some(entry) = iter.next() {
+            cx.handlers().iter(|iter| {
+                for entry in iter {
                     let handler = entry.value();
                     if handler
                         .window_id()
@@ -91,8 +91,8 @@ where
         }
 
         context::set(cx, el, || {
-            cx.handlers().iter(|mut iter| {
-                while let Some(entry) = iter.next() {
+            cx.handlers().iter(|iter| {
+                for entry in iter {
                     entry.value().suspended(el);
                 }
             });

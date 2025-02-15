@@ -32,8 +32,8 @@ impl DependencyTracker {
 
     pub fn notify(self: Pin<&Self>, queue: Pin<&Queue>) {
         self.project_ref().dependents.take(|dependents| {
-            dependents.iter(|mut iter| {
-                while let Some(dependent) = iter.next() {
+            dependents.iter(|iter| {
+                for dependent in iter {
                     let queue_entry = unsafe { dependent.value_pinned().get().as_ref() };
 
                     if !queue_entry.linked() {

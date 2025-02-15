@@ -5,7 +5,7 @@ use super::{raw, Entry};
 #[derive(Debug)]
 pub struct Iter<'a, T> {
     inner: raw::iter::Iter<'a>,
-    _ph: PhantomData<T>,
+    _ph: PhantomData<&'a T>,
 }
 
 impl<'a, T> Iter<'a, T> {
@@ -16,10 +16,12 @@ impl<'a, T> Iter<'a, T> {
             _ph: PhantomData,
         }
     }
+}
 
-    // lending iterators :(
-    #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<&Entry<T>> {
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a Entry<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         Some(unsafe { self.inner.next()?.get_extended_ref() })
     }
 }
