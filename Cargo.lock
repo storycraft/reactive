@@ -541,16 +541,13 @@ name = "example-app"
 version = "0.1.0"
 dependencies = [
  "futures",
- "glutin-winit",
  "pin-project",
  "rand 0.9.0",
  "reactive",
  "reactive-primitive",
  "reactivity",
  "reactivity-winit",
- "skia-safe",
  "tokio",
- "winit",
 ]
 
 [[package]]
@@ -878,6 +875,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbf6a919d6cf397374f7dfeeea91d974c7c0a7221d0d0f4f20d859d329e53fcc"
 
 [[package]]
+name = "hkt-pin-list"
+version = "0.1.0"
+source = "git+https://github.com/storycraft/hkt-pin-list#9c9204aee090e311315190005eaf8c4932445dd2"
+dependencies = [
+ "pin-project-lite",
+ "pinned-aliasable",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1080,6 +1086,12 @@ checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys",
 ]
+
+[[package]]
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "nom"
@@ -1668,12 +1680,25 @@ name = "reactivity"
 version = "0.1.0"
 dependencies = [
  "derive_more",
+ "hkt-pin-list",
  "noop-waker",
  "pin-project",
  "pinned-aliasable",
  "pollster",
  "reactivity-macro",
  "scoped-tls-hkt",
+]
+
+[[package]]
+name = "reactivity-layout"
+version = "0.1.0"
+dependencies = [
+ "derive_more",
+ "nohash-hasher",
+ "reactive",
+ "reactivity-winit",
+ "skia-safe",
+ "taffy",
 ]
 
 [[package]]
@@ -1691,6 +1716,7 @@ version = "0.1.0"
 dependencies = [
  "async-executor",
  "derive_more",
+ "hkt-pin-list",
  "pin-project",
  "reactivity",
  "scoped-tls-hkt",

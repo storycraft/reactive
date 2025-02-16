@@ -3,10 +3,10 @@ use core::pin::Pin;
 use pin_project::pin_project;
 
 use crate::{
-    define_safe_list,
     effect::{Binding, TrackerBinding},
     queue::Queue,
 };
+use hkt_pin_list::define_safe_list;
 
 define_safe_list!(pub(crate) TrackerList = TrackerBinding);
 

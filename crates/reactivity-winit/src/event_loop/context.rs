@@ -1,8 +1,9 @@
 use core::{cell::Cell, pin::Pin, task::Waker};
 
 use async_executor::LocalExecutor;
+use hkt_pin_list::define_safe_list;
 use pin_project::pin_project;
-use reactivity::{define_safe_list, queue::Queue};
+use reactivity::queue::Queue;
 use scoped_tls_hkt::scoped_thread_local;
 use winit::event_loop::ActiveEventLoop;
 

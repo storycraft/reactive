@@ -3,7 +3,7 @@ use core::{
     pin::{pin, Pin},
 };
 
-use reactivity::list::Node;
+use hkt_pin_list::Node;
 use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId};
 
 use super::context::{self, EventLoopStatus};

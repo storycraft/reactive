@@ -1,0 +1,18 @@
+[package]
+name = "reactivity-layout"
+version.workspace = true
+edition.workspace = true
+authors = ["storycraft <storycraft@pancake.sh>"]
+license.workspace = true
+
+[dependencies]
+reactivity-winit.workspace = true
+reactive.workspace = true
+
+skia-safe = "0.81.0"
+taffy = { version = "0.7.5", default-features = false, features = [
+    "flexbox",
+    "grid",
+] }
+nohash-hasher = "0.2.0"
+derive_more = { version = "2.0.1", features = ["full"] }

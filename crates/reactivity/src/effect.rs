@@ -8,7 +8,7 @@ use core::{
 use pin_project::{pin_project, pinned_drop};
 use pinned_aliasable::Aliasable;
 
-use crate::list::{Entry, Node};
+use hkt_pin_list::{Entry, Node};
 
 #[derive(Debug)]
 #[pin_project(PinnedDrop)]

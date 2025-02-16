@@ -4,9 +4,10 @@ use core::{
     task::Waker,
 };
 
+use hkt_pin_list::{define_safe_list, Entry};
 use pin_project::pin_project;
 
-use crate::{define_safe_list, effect::EffectFnPtr, list::Entry};
+use crate::effect::EffectFnPtr;
 
 define_safe_list!(EffectFnList = EffectFnPtr);
 
@@ -25,8 +26,8 @@ impl Queue {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.updates.is_empty()
+    pub fn is_empty(self: Pin<&Self>) -> bool {
+        self.project_ref().updates.is_empty()
     }
 
     pub fn run(self: Pin<&Self>, waker: &Waker) {
