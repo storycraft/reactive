@@ -877,7 +877,8 @@ checksum = "fbf6a919d6cf397374f7dfeeea91d974c7c0a7221d0d0f4f20d859d329e53fcc"
 [[package]]
 name = "hkt-pin-list"
 version = "0.1.0"
-source = "git+https://github.com/storycraft/hkt-pin-list#a1eb7c21ca475dce5c85d273e082a873ecc6c626"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e413b73880d03d14d18737b902defbf4d71cac7dc065152f9bd76323ea90a9ac"
 dependencies = [
  "pin-project-lite",
 ]
