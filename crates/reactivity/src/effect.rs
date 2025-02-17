@@ -8,7 +8,7 @@ use core::{
 use pin_project::{pin_project, pinned_drop};
 use pinned_aliasable::Aliasable;
 
-use hkt_pin_list::{Entry, Node};
+use hkt_pin_list::Node;
 
 #[derive(Debug)]
 #[pin_project(PinnedDrop)]
@@ -36,9 +36,7 @@ where
     pub fn init(self: Pin<&mut Self>) {
         let mut this = self.project();
         // aliasable pin projection
-        let inner = unsafe {
-            Pin::new_unchecked(this.inner.as_ref().get())
-        };
+        let inner = unsafe { Pin::new_unchecked(this.inner.as_ref().get()) };
 
         // Initialize node to queue
         this.to_queue.set(Node::new(EffectFnPtr(
@@ -46,9 +44,9 @@ where
         )));
 
         // Initialize bindings
-        let entry = this.to_queue.as_ref().entry();
+        let node = this.to_queue.as_ref();
         for binding in inner.project_ref().bindings.iter() {
-            binding.to_tracker().value().0.set(NonNull::from(entry));
+            binding.to_tracker().value().0.set(NonNull::from(&*node));
         }
 
         inner.call();
@@ -70,8 +68,8 @@ pub struct Binding<'a>(Pin<&'a RawBinding>);
 
 impl<'a> Binding<'a> {
     /// Entry connecting to dependency tracker
-    pub(crate) fn to_tracker(self) -> &'a Entry<TrackerBinding> {
-        self.0.project_ref().to_tracker.entry()
+    pub(crate) fn to_tracker(self) -> Pin<&'a Node<TrackerBinding>> {
+        self.0.project_ref().to_tracker
     }
 }
 
@@ -156,18 +154,18 @@ impl EffectFnPtr {
     }
 }
 
-type EffectFnPtrEntry = Entry<EffectFnPtr>;
+type EffectFnPtrNode = Node<EffectFnPtr>;
 
 #[repr(transparent)]
 #[derive(Debug)]
-pub(crate) struct TrackerBinding(Cell<NonNull<EffectFnPtrEntry>>);
+pub(crate) struct TrackerBinding(Cell<NonNull<EffectFnPtrNode>>);
 
 impl TrackerBinding {
     pub const fn new() -> Self {
         Self(Cell::new(NonNull::dangling()))
     }
 
-    pub fn get(&self) -> NonNull<EffectFnPtrEntry> {
+    pub fn get(&self) -> NonNull<EffectFnPtrNode> {
         self.0.get()
     }
 }

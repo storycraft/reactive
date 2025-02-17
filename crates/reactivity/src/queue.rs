@@ -4,7 +4,7 @@ use core::{
     task::Waker,
 };
 
-use hkt_pin_list::{define_safe_list, Entry};
+use hkt_pin_list::{define_safe_list, Node};
 use pin_project::pin_project;
 
 use crate::effect::EffectFnPtr;
@@ -26,15 +26,13 @@ impl Queue {
         }
     }
 
-    pub fn is_empty(self: Pin<&Self>) -> bool {
-        self.project_ref().updates.is_empty()
+    pub fn is_empty(&self) -> bool {
+        self.updates.is_empty()
     }
 
-    pub fn run(self: Pin<&Self>, waker: &Waker) {
-        let this = self.project_ref();
-
+    pub fn run(&self, waker: &Waker) {
         loop {
-            if !this.updates.iter(|mut iter| {
+            if !self.updates.iter(|mut iter| {
                 if let Some(entry) = iter.next() {
                     entry.unlink();
                     entry.value().call();
@@ -57,8 +55,8 @@ impl Queue {
         self.waker.set(Some(waker.clone()));
     }
 
-    pub(crate) fn add(self: Pin<&Self>, entry: &Entry<EffectFnPtr>) {
-        self.project_ref().updates.push_front(entry);
+    pub(crate) fn add(self: Pin<&Self>, node: Pin<&Node<EffectFnPtr>>) {
+        self.project_ref().updates.push_front(node);
         if let Some(waker) = self.waker.take() {
             waker.wake();
         }
