@@ -8,7 +8,7 @@ use crate::{
 };
 use hkt_pin_list::define_safe_list;
 
-define_safe_list!(pub(crate) TrackerList = TrackerBinding);
+define_safe_list!(TrackerList = TrackerBinding);
 
 #[pin_project]
 #[derive(Debug)]
