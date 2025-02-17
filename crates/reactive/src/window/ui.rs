@@ -77,7 +77,7 @@ impl Ui {
     pub fn request_redraw(&self) {
         if !self.inner.draw_queued.get() {
             self.inner.draw_queued.set(true);
-            let _ = self.with_window_untracked(|window| window.request_redraw());
+            _ = self.with_window_untracked(|window| window.request_redraw());
         }
     }
 

@@ -113,10 +113,9 @@ pub fn run<Fut: Future<Output = ()>>(mut el: EventLoopBuilder<()>, fut: Fut) {
     let proxy = el.create_proxy();
 
     // Poll task on start
-    let _ = proxy.send_event(());
-
+    _ = proxy.send_event(());
     let waker = waker_fn(move || {
-        let _ = proxy.send_event(());
+        _ = proxy.send_event(());
     });
 
     let cx = Rc::pin(AppShared::new(Some(waker.clone())));
