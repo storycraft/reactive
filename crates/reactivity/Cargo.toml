@@ -1,5 +1,6 @@
 [package]
 name = "reactivity"
+description = "True zero cost fine grained reactivity system"
 version.workspace = true
 edition.workspace = true
 authors = ["storycraft <storycraft@pancake.sh>"]
