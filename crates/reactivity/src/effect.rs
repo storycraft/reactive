@@ -2,7 +2,7 @@ use core::{
     array,
     cell::{Cell, UnsafeCell},
     pin::{pin, Pin},
-    ptr::NonNull,
+    ptr::{self, NonNull},
 };
 
 use pin_project::{pin_project, pinned_drop};
@@ -16,7 +16,7 @@ pub struct Effect<const BINDINGS: usize, F> {
     #[pin]
     to_queue: Node<EffectFnPtr>,
     #[pin]
-    inner: Aliasable<Inner<BINDINGS, F>>,
+    inner: Aliasable<EffectFn<BINDINGS, F>>,
 }
 
 impl<const BINDINGS: usize, F> Effect<BINDINGS, F>
@@ -25,8 +25,8 @@ where
 {
     pub fn new(f: F) -> Self {
         Self {
-            to_queue: Node::new(EffectFnPtr(NonNull::from(&mut ()))),
-            inner: Aliasable::new(Inner {
+            to_queue: Node::new(EffectFnPtr::null()),
+            inner: Aliasable::new(EffectFn {
                 bindings: BindingArray::new(),
                 f: UnsafeCell::new(f),
             }),
@@ -39,9 +39,7 @@ where
         let inner = unsafe { Pin::new_unchecked(this.inner.as_ref().get()) };
 
         // Initialize node to queue
-        this.to_queue.set(Node::new(EffectFnPtr(
-            NonNull::new(&*inner as *const dyn EffectFn as *mut dyn EffectFn).unwrap(),
-        )));
+        this.to_queue.set(Node::new(EffectFnPtr::new(inner)));
 
         // Initialize bindings
         let node = this.to_queue.as_ref();
@@ -104,19 +102,14 @@ impl<const SIZE: usize> BindingArray<SIZE> {
 
 #[derive(Debug)]
 #[pin_project]
-struct Inner<const BINDINGS: usize, F> {
+struct EffectFn<const BINDINGS: usize, F> {
     #[pin]
     bindings: BindingArray<BINDINGS>,
     #[pin]
     f: UnsafeCell<F>,
 }
 
-trait EffectFn {
-    // Call effect
-    fn call(self: Pin<&Self>);
-}
-
-impl<const BINDINGS: usize, F> EffectFn for Inner<BINDINGS, F>
+impl<const BINDINGS: usize, F> EffectFn<BINDINGS, F>
 where
     F: FnMut(Pin<&BindingArray<BINDINGS>>),
 {
@@ -129,10 +122,6 @@ where
     }
 }
 
-impl EffectFn for () {
-    fn call(self: Pin<&Self>) {}
-}
-
 #[derive(Debug)]
 #[pin_project]
 /// Unpinned binding
@@ -142,15 +131,43 @@ struct RawBinding {
     to_tracker: Node<TrackerBinding>,
 }
 
-#[repr(transparent)]
-#[derive(Debug)]
-/// Self contained and pinned Effect fn pointer
-pub(super) struct EffectFnPtr(NonNull<dyn EffectFn>);
+#[derive(Debug, Clone, Copy)]
+/// Self referential pinned Effect fn pointer
+pub(super) struct EffectFnPtr {
+    call: unsafe fn(*const ()),
+    ptr: *const (),
+}
 
 impl EffectFnPtr {
-    pub fn call(&self) {
-        // SAFETY: pointer is always valid since entry is self referential with pointee
-        unsafe { Pin::new_unchecked(self.0.as_ref()).call() }
+    fn new<const BINDINGS: usize, F>(effect: Pin<&EffectFn<BINDINGS, F>>) -> Self
+    where
+        F: FnMut(Pin<&BindingArray<BINDINGS>>),
+    {
+        unsafe fn call<const BINDINGS: usize, F>(this: *const ())
+        where
+            F: FnMut(Pin<&BindingArray<BINDINGS>>),
+        {
+            Pin::new_unchecked(&*this.cast::<EffectFn<BINDINGS, F>>()).call();
+        }
+
+        Self {
+            call: call::<BINDINGS, F>,
+            ptr: &raw const *effect as *const (),
+        }
+    }
+
+    fn null() -> Self {
+        Self {
+            call: |_| {},
+            ptr: ptr::null(),
+        }
+    }
+
+    #[inline(always)]
+    pub(super) fn call(self) {
+        unsafe {
+            (self.call)(self.ptr);
+        }
     }
 }
 
