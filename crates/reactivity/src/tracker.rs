@@ -1,26 +1,24 @@
 use core::pin::Pin;
 
+use hkt_pin_list::LinkedList;
 use pin_project::pin_project;
 
 use crate::{
     effect::{Binding, TrackerBinding},
     queue::Queue,
 };
-use hkt_pin_list::define_safe_list;
-
-define_safe_list!(TrackerList = TrackerBinding);
 
 #[pin_project]
 #[derive(Debug)]
 pub struct DependencyTracker {
     #[pin]
-    dependents: TrackerList,
+    dependents: LinkedList<TrackerBinding>,
 }
 
 impl DependencyTracker {
     pub fn new() -> Self {
         Self {
-            dependents: TrackerList::new(),
+            dependents: LinkedList::new(),
         }
     }
 
@@ -35,7 +33,7 @@ impl DependencyTracker {
             dependents.iter(|iter| {
                 for dependent in iter {
                     let queue_node =
-                        unsafe { Pin::new_unchecked(dependent.value_pinned().get().as_ref()) };
+                        unsafe { Pin::new_unchecked(&*dependent.value_pinned().get()) };
 
                     if !queue_node.linked() {
                         queue.add(queue_node);

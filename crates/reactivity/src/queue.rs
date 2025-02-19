@@ -4,25 +4,25 @@ use core::{
     task::Waker,
 };
 
-use hkt_pin_list::{define_safe_list, Node};
+use hkt_pin_list::{define_hkt_list, Node};
 use pin_project::pin_project;
 
-use crate::effect::EffectFnPtr;
+use crate::effect::EffectFn;
 
-define_safe_list!(EffectFnList = EffectFnPtr);
+define_hkt_list!(UpdateList = for<'a> dyn EffectFn + 'a);
 
 #[pin_project]
 pub struct Queue {
     waker: Cell<Option<Waker>>,
     #[pin]
-    updates: EffectFnList,
+    updates: UpdateList,
 }
 
 impl Queue {
     pub fn new(waker: Option<Waker>) -> Self {
         Self {
             waker: Cell::new(waker),
-            updates: EffectFnList::new(),
+            updates: UpdateList::new(),
         }
     }
 
@@ -35,7 +35,7 @@ impl Queue {
             if !self.updates.iter(|mut iter| {
                 if let Some(entry) = iter.next() {
                     entry.unlink();
-                    entry.value().call();
+                    entry.value_pinned().call();
                     true
                 } else {
                     false
@@ -55,7 +55,7 @@ impl Queue {
         self.waker.set(Some(waker.clone()));
     }
 
-    pub(crate) fn add(self: Pin<&Self>, node: Pin<&Node<EffectFnPtr>>) {
+    pub(crate) fn add(self: Pin<&Self>, node: Pin<&Node<dyn EffectFn>>) {
         self.project_ref().updates.push_front(node);
         if let Some(waker) = self.waker.take() {
             waker.wake();
