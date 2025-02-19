@@ -82,9 +82,12 @@ pub fn gen(EffectDef { expr }: EffectDef) -> TokenStream {
     quote!(
         #unused_warn
 
-        let #effect = ::core::pin::pin!(
-            ::reactivity::effect::Effect::<#len, _>::new(|#bindings| #tokens)
-        );
+        let #effect = |
+            #bindings: ::core::pin::Pin<&::reactivity::effect::BindingArray<#len>>
+        | #tokens;
+        let #effect = ::core::pin::pin!(unsafe {
+            ::reactivity::effect::Effect::new_unchecked(#effect)
+        });
         ::reactivity::effect::Effect::init(#effect);
     )
 }

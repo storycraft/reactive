@@ -21,9 +21,20 @@ impl<'a, const BINDINGS: usize, F> Effect<'a, BINDINGS, F>
 where
     F: FnMut(Pin<&BindingArray<BINDINGS>>) + 'a,
 {
-    pub fn new(f: F) -> Self {
+    pub fn new(f: F) -> Self
+    where
+        'a: 'static,
+    {
         Self {
             to_queue: Node::new(Inner::new(f)),
+        }
+    }
+
+    /// # Safety
+    /// Borrowed values must remain valid even if [`Effect`] is leaked
+    pub unsafe fn new_unchecked(f: F) -> Self {
+        Self {
+            to_queue: Node::new_unchecked(Inner::new(f)),
         }
     }
 

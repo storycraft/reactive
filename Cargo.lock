@@ -884,6 +884,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hkt-pin-list"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff8a26f5f930d2645142486b98b799bf8eb5ca45b61f98e67b12a5d8d41596c6"
+dependencies = [
+ "paste",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1423,6 +1433,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1501,12 +1517,6 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
-
-[[package]]
-name = "pinned-aliasable"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d0f9ae89bf0ed03b69ac1f3f7ea2e6e09b4fa5448011df2e67d581c2b850b7b"
 
 [[package]]
 name = "pkg-config"
@@ -1674,9 +1684,8 @@ name = "reactivity"
 version = "0.1.0"
 dependencies = [
  "derive_more",
- "hkt-pin-list",
+ "hkt-pin-list 0.2.1",
  "pin-project",
- "pinned-aliasable",
  "pollster",
  "reactivity-macro",
  "scoped-tls-hkt",
@@ -1709,7 +1718,7 @@ version = "0.1.0"
 dependencies = [
  "async-executor",
  "derive_more",
- "hkt-pin-list",
+ "hkt-pin-list 0.1.0",
  "pin-project",
  "reactivity",
  "scoped-tls-hkt",
@@ -2177,9 +2186,9 @@ checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a210d160f08b701c8721ba1c726c11662f877ea6b7094007e1ca9a1041945034"
+checksum = "00e2473a93778eb0bad35909dff6a10d28e63f792f16ed15e404fca9d5eeedbe"
 
 [[package]]
 name = "unicode-segmentation"

@@ -14,7 +14,7 @@ macros = ["reactivity-macro"]
 reactivity-macro = { workspace = true, optional = true }
 
 pin-project = "1.1.9"
-hkt-pin-list = "0.2.0"
+hkt-pin-list = "0.2.1"
 
 [dev-dependencies]
 pollster = "0.4.0"
