@@ -1,7 +1,6 @@
 use core::{
     array,
     cell::{Cell, UnsafeCell},
-    marker::PhantomData,
     pin::{pin, Pin},
     ptr::{self},
 };
@@ -14,7 +13,7 @@ use hkt_pin_list::Node;
 #[pin_project]
 pub struct Effect<'a, const BINDINGS: usize, F> {
     #[pin]
-    to_queue: Node<Inner<'a, BINDINGS, F>, dyn EffectFn + 'a>,
+    to_queue: Node<Inner<BINDINGS, F>, dyn EffectFn + 'a>,
 }
 
 impl<'a, const BINDINGS: usize, F> Effect<'a, BINDINGS, F>
@@ -95,23 +94,21 @@ impl<const SIZE: usize> BindingArray<SIZE> {
 
 #[derive(Debug)]
 #[pin_project]
-struct Inner<'a, const BINDINGS: usize, F> {
+struct Inner<const BINDINGS: usize, F> {
     #[pin]
     bindings: BindingArray<BINDINGS>,
     #[pin]
     f: UnsafeCell<F>,
-    _ph: PhantomData<&'a ()>,
 }
 
-impl<'a, const BINDINGS: usize, F> Inner<'a, BINDINGS, F>
+impl<const BINDINGS: usize, F> Inner<BINDINGS, F>
 where
-    F: FnMut(Pin<&BindingArray<BINDINGS>>) + 'a,
+    F: FnMut(Pin<&BindingArray<BINDINGS>>),
 {
     fn new(f: F) -> Self {
         Self {
             bindings: BindingArray::new(),
             f: UnsafeCell::new(f),
-            _ph: PhantomData,
         }
     }
 }
@@ -124,7 +121,7 @@ impl EffectFn for () {
     fn call(self: Pin<&Self>) {}
 }
 
-impl<const BINDINGS: usize, F> EffectFn for Inner<'_, BINDINGS, F>
+impl<const BINDINGS: usize, F> EffectFn for Inner<BINDINGS, F>
 where
     F: FnMut(Pin<&BindingArray<BINDINGS>>),
 {
