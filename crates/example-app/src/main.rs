@@ -100,7 +100,7 @@ async fn flash_block<Child: SetupFn>(ui: Ui, child: Child) -> Child::Output {
         if let Some(value) = resource.get($) {
             let value: Srgba = value;
             let rgba = Srgba::<u8>::from(value);
-            *text.get_mut() = format!("color: {} {} {}", rgba.red, rgba.green, rgba.blue);
+            text.set(format!("color: {} {} {}", rgba.red, rgba.green, rgba.blue));
             size.set(random_range(16.0..32.0));
             color.set(value);
         }

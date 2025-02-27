@@ -31,11 +31,11 @@ where
 
     /// # Safety
     /// Borrowed values must remain valid even if [`Effect`] is leaked
-    pub unsafe fn new_unchecked(f: F) -> Self {
+    pub unsafe fn new_unchecked(f: F) -> Self { unsafe {
         Self {
             to_queue: Node::new_unchecked(Inner::new(f)),
         }
-    }
+    }}
 
     pub fn init(self: Pin<&mut Self>) {
         let this = self.project();

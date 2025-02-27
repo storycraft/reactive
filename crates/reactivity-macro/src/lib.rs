@@ -14,5 +14,5 @@ use effect::EffectDef;
 /// You can't have undefined behaviour by using well defined executors(like tokio or async_std) and future combinators
 pub fn let_effect(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = EffectDef::new(item.into());
-    effect::gen(input).into()
+    effect::expand(input).into()
 }

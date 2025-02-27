@@ -61,7 +61,7 @@ impl<'a> BindingGen<'a> {
     }
 }
 
-pub fn gen(EffectDef { expr }: EffectDef) -> TokenStream {
+pub fn expand(EffectDef { expr }: EffectDef) -> TokenStream {
     let effect = Ident::new("_effect", Span::mixed_site());
     let bindings = Ident::new("bindings", Span::mixed_site());
     let (len, tokens) = BindingGen::transform(&bindings, expr);
