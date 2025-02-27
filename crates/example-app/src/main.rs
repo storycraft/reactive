@@ -1,8 +1,9 @@
-use core::{pin::pin, time::Duration};
+use core::time::Duration;
 
 use futures::join;
 use rand::random_range;
 use reactive::{
+    pin_ref,
     taffy::{Size, Style},
     window::{ui::Ui, UiWindow},
     winit::event_loop::EventLoopBuilder,
@@ -27,12 +28,12 @@ fn main() {
     run(EventLoopBuilder::default(), Box::pin(async_main()));
 }
 
-pub async fn async_main() {
-    let win = pin!(UiWindow::new());
-    let win = win.into_ref();
+async fn async_main() {
+    let win = UiWindow::new();
+    pin_ref!(win);
 
-    let input = pin!(StateCell::new(0));
-    let input = input.into_ref();
+    let input = StateCell::new(0);
+    pin_ref!(input);
 
     let resource = Resource::new();
     let_effect!({
@@ -62,68 +63,65 @@ pub async fn async_main() {
         });
 
         join!(
-            flash_block()
+            flash_block
                 .child(|ui: Ui| async move {
                     join!(
-                        flash_block().show(ui.clone()),
-                        flash_block().show(ui.clone()),
-                        flash_block().show(ui)
+                        flash_block.show(ui.clone()),
+                        flash_block.show(ui.clone()),
+                        flash_block.show(ui)
                     )
                 })
                 .show(ui.clone()),
-            flash_block().show(ui.clone()),
-            flash_block().show(ui),
+            flash_block.show(ui.clone()),
+            flash_block.show(ui),
         );
     })
     .await;
 }
 
-fn flash_block<Child: SetupFn>() -> impl WithChild<Child> {
-    |ui, child| async move {
-        let layout = pin!(StateRefCell::new(Style {
-            size: Size::from_percent(0.3, 0.3),
-            ..Style::DEFAULT
-        }));
+async fn flash_block<Child: SetupFn>(ui: Ui, child: Child) -> Child::Output {
+    let layout = StateRefCell::new(Style {
+        size: Size::from_percent(0.3, 0.3),
+        ..Style::DEFAULT
+    });
+    pin_ref!(layout);
 
-        let text = pin!(StateRefCell::new(String::new()));
-        let text = text.into_ref();
+    let text = StateRefCell::new(String::new());
+    pin_ref!(text);
 
-        let size = pin!(StateCell::new(16.0));
-        let size = size.into_ref();
+    let size = StateCell::new(16.0);
+    pin_ref!(size);
 
-        let color = pin!(StateCell::new(
-            named::WHITE.into_format::<f32>().with_alpha(1.0)
-        ));
-        let color = color.into_ref();
+    let color = StateCell::new(named::WHITE.into_format::<f32>().with_alpha(1.0));
+    pin_ref!(color);
 
-        let resource = Resource::new();
-        let_effect!({
-            if let Some(value) = resource.get($) {
-                let value: Srgba = value;
-                let rgba = Srgba::<u8>::from(value);
-                *text.get_mut() = format!("color: {} {} {}", rgba.red, rgba.green, rgba.blue);
-                size.set(random_range(16.0..32.0));
-                color.set(value);
-            }
+    let resource = Resource::new();
+    let_effect!({
+        if let Some(value) = resource.get($) {
+            let value: Srgba = value;
+            let rgba = Srgba::<u8>::from(value);
+            *text.get_mut() = format!("color: {} {} {}", rgba.red, rgba.green, rgba.blue);
+            size.set(random_range(16.0..32.0));
+            color.set(value);
+        }
 
-            resource.load(async move {
-                sleep(Duration::from_millis(100)).await;
-                Srgba::from_u32::<Argb>(random_range(0_u32..0xffffffff)).into_format()
-            });
+        resource.load(async move {
+            sleep(Duration::from_millis(100)).await;
+            Srgba::from_u32::<Argb>(random_range(0_u32..0xffffffff)).into_format()
         });
+    });
 
-        Rect::builder()
-            .layout(layout.into_ref())
-            .fill(Fill::builder().color(color).build())
-            .build()
-            .child(
-                Text::builder()
-                    .content(text)
-                    .size(size)
-                    .build()
-                    .child(child),
-            )
-            .show(ui)
-            .await
-    }
+    Rect::builder()
+        .layout(layout)
+        .fill(Fill::builder().color(color).build())
+        .build()
+        .child(
+            Text::builder()
+                .content(text)
+                .size(size)
+                .build()
+                .child(child),
+        )
+        .show(ui)
+        .await
 }
