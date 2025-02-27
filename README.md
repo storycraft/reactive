@@ -1,6 +1,13 @@
 # Tbd
 Experimental zero cost declarative fine grained reactivity system
 
+## Safety requirement
+Due to lack of drop guarantee in Rust, it can be unsound if the effect is leaked.
+This is same limitation as scoped task.
+
+It's unsafe to manually poll boxed future containing effects and leaking it.
+You can't have undefined behaviour by using well defined executors(like tokio or async_std) and future combinators
+
 ## How it works
 ![structure](assets/structure.svg)
  * `DependencyTracker`: 1 pointer sized main reactive primitive wrapping Intrusive linked list. Which contains start pointer to `Binding`
