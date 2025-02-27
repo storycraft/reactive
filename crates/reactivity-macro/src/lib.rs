@@ -11,7 +11,7 @@ use effect::EffectDef;
 /// unless drop guarantee is available in the future.
 /// 
 /// it is unsafe to manually poll boxed future containing effects and leaking it.
-/// You can't have undefined behaviour by using well defined executors(like tokio or async_std) or future combinators
+/// You can't have undefined behaviour by using well defined executors(like tokio or async_std) and future combinators
 pub fn let_effect(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = EffectDef::new(item.into());
     effect::gen(input).into()
