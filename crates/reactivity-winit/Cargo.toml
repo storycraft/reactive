@@ -14,4 +14,4 @@ waker-fn = "1.2.0"
 winit = "0.30.9"
 derive_more = { version = "2.0.1", features = ["full"] }
 scoped-tls-hkt = "0.1.5"
-hkt-pin-list = "0.1.0"
+hkt-pin-list = "0.2.1"

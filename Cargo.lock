@@ -537,6 +537,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "event"
+version = "0.1.0"
+dependencies = [
+ "hkt-pin-list",
+ "pin-project",
+ "reactive",
+ "reactive-primitive",
+ "reactivity",
+ "reactivity-winit",
+]
+
+[[package]]
 name = "example-app"
 version = "0.1.0"
 dependencies = [
@@ -873,15 +885,6 @@ name = "hermit-abi"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbf6a919d6cf397374f7dfeeea91d974c7c0a7221d0d0f4f20d859d329e53fcc"
-
-[[package]]
-name = "hkt-pin-list"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e413b73880d03d14d18737b902defbf4d71cac7dc065152f9bd76323ea90a9ac"
-dependencies = [
- "pin-project-lite",
-]
 
 [[package]]
 name = "hkt-pin-list"
@@ -1684,7 +1687,7 @@ name = "reactivity"
 version = "0.1.0"
 dependencies = [
  "derive_more",
- "hkt-pin-list 0.2.1",
+ "hkt-pin-list",
  "pin-project",
  "pollster",
  "reactivity-macro",
@@ -1718,7 +1721,7 @@ version = "0.1.0"
 dependencies = [
  "async-executor",
  "derive_more",
- "hkt-pin-list 0.1.0",
+ "hkt-pin-list",
  "pin-project",
  "reactivity",
  "scoped-tls-hkt",

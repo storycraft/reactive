@@ -19,7 +19,7 @@ pub trait WinitWindow {
 }
 
 pub async fn add<Fut: Future>(this: Pin<&impl WinitWindow>, fut: Fut) -> Fut::Output {
-    let node = pin!(Node::new(this as Pin<&dyn WinitWindow>));
+    let node = pin!(unsafe { Node::new_unchecked(this as Pin<&dyn WinitWindow>) });
     context::with(|cx| {
         cx.app.handlers().push_front(node.into_ref());
 

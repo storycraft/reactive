@@ -1,17 +1,16 @@
 use core::{cell::Cell, pin::Pin, task::Waker};
 
 use async_executor::LocalExecutor;
-use hkt_pin_list::define_safe_list;
+use hkt_pin_list::define_hkt_list;
 use pin_project::pin_project;
 use reactivity::queue::Queue;
 use scoped_tls_hkt::scoped_thread_local;
 use winit::event_loop::ActiveEventLoop;
-
 use super::handler::WinitWindow;
 
 scoped_thread_local!(static CX: for<'a> Context<'a>);
 
-define_safe_list!(pub HandlerList = Pin<&dyn WinitWindow>);
+define_hkt_list!(pub HandlerList = for<'a, 'b> Pin<&'a (dyn WinitWindow + 'b)>);
 
 #[derive(Clone, Copy)]
 #[non_exhaustive]
