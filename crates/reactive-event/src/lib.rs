@@ -34,15 +34,13 @@ impl<Hkt: ForLt> EventTarget<Hkt> {
     pub fn bind(self: Pin<&Self>, listener: Pin<&Listener<Hkt::Of<'_>>>) {
         let this = self.project_ref();
         let node = listener.project_ref().node;
-        // store higher kinded lifetime in static form
         this.list.push_front(node);
     }
 }
 
 impl<Hkt: ForLt> EventTarget<Hkt> {
-    fn iter<R>(&self, f: impl FnOnce(iter::Iter<Hkt>) -> R) -> R {
+    pub fn iter<R>(&self, f: impl FnOnce(iter::Iter<Hkt>) -> R) -> R {
         let _guard = self.guard.borrow_mut();
-        // Hide static lifetimes in higher kinded lifetimes
         self.list.iter(|iter| f(Iter { iter }))
     }
 
