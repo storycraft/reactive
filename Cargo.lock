@@ -537,18 +537,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "event"
-version = "0.1.0"
-dependencies = [
- "hkt-pin-list",
- "pin-project",
- "reactive",
- "reactive-primitive",
- "reactivity",
- "reactivity-winit",
-]
-
-[[package]]
 name = "example-app"
 version = "0.1.0"
 dependencies = [
@@ -1670,6 +1658,15 @@ dependencies = [
  "scopeguard",
  "skia-safe",
  "taffy",
+]
+
+[[package]]
+name = "reactive-event"
+version = "0.1.0"
+dependencies = [
+ "derive_more",
+ "hkt-pin-list",
+ "pin-project",
 ]
 
 [[package]]

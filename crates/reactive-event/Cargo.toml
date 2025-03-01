@@ -1,0 +1,12 @@
+[package]
+name = "reactive-event"
+description = "Lifetime friendly intrusive event handler"
+version.workspace = true
+edition.workspace = true
+authors = ["storycraft <storycraft@pancake.sh>"]
+license.workspace = true
+
+[dependencies]
+pin-project = "1.1.9"
+hkt-pin-list = "0.2.1"
+derive_more = { version = "2.0.1", features = ["full"] }
