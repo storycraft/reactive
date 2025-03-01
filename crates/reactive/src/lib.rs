@@ -6,6 +6,7 @@ pub use reactivity_winit;
 pub use reactivity_winit::winit;
 pub use skia_safe;
 pub use taffy;
+pub use reactive_event as event;
 
 use core::{
     any::{Any, TypeId},

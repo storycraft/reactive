@@ -1653,6 +1653,7 @@ dependencies = [
  "glutin",
  "glutin-winit",
  "pin-project",
+ "reactive-event",
  "reactivity",
  "reactivity-winit",
  "scopeguard",

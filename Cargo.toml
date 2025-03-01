@@ -11,5 +11,6 @@ license = "Apache-2.0 or MIT"
 reactivity-winit = { path = "crates/reactivity-winit" }
 reactive = { path = "crates/reactive" }
 reactive-primitive = { path = "crates/reactive-primitive" }
+reactive-event = { path = "crates/reactive-event" }
 reactivity = { path = "crates/reactivity" }
 reactivity-macro = { path = "crates/reactivity-macro" }
