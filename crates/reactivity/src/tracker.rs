@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug)]
 pub struct DependencyTracker {
     #[pin]
-    dependents: LinkedList<TrackerBinding>,
+    dependents: LinkedList!(TrackerBinding),
 }
 
 impl DependencyTracker {

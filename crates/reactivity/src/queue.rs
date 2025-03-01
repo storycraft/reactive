@@ -4,25 +4,23 @@ use core::{
     task::Waker,
 };
 
-use hkt_pin_list::{define_hkt_list, Node};
+use hkt_pin_list::{LinkedList, Node};
 use pin_project::pin_project;
 
 use crate::effect::EffectFn;
-
-define_hkt_list!(UpdateList = for<'a> dyn EffectFn + 'a);
 
 #[pin_project]
 pub struct Queue {
     waker: Cell<Option<Waker>>,
     #[pin]
-    updates: UpdateList,
+    updates: LinkedList!(for<'a> dyn EffectFn + 'a),
 }
 
 impl Queue {
     pub fn new(waker: Option<Waker>) -> Self {
         Self {
             waker: Cell::new(waker),
-            updates: UpdateList::new(),
+            updates: LinkedList::new(),
         }
     }
 
