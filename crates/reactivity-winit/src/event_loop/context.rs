@@ -1,16 +1,15 @@
 use core::{cell::Cell, pin::Pin, task::Waker};
 
 use async_executor::LocalExecutor;
-use hkt_pin_list::define_hkt_list;
+use hkt_pin_list::LinkedList;
 use pin_project::pin_project;
 use reactivity::queue::Queue;
 use scoped_tls_hkt::scoped_thread_local;
 use winit::event_loop::ActiveEventLoop;
+
 use super::handler::WinitWindow;
 
 scoped_thread_local!(static CX: for<'a> Context<'a>);
-
-define_hkt_list!(pub HandlerList = for<'a, 'b> Pin<&'a (dyn WinitWindow + 'b)>);
 
 #[derive(Clone, Copy)]
 #[non_exhaustive]
@@ -18,6 +17,8 @@ pub struct Context<'a> {
     pub app: Pin<&'a AppShared>,
     pub el: &'a ActiveEventLoop,
 }
+
+type HandlerList = LinkedList!(for<'a> Pin<&'a (dyn WinitWindow + 'a)>);
 
 #[pin_project]
 pub struct AppShared {
@@ -34,7 +35,7 @@ impl AppShared {
         Self {
             status: Cell::new(EventLoopStatus::Suspended),
             executor: LocalExecutor::new(),
-            handlers: HandlerList::new(),
+            handlers: LinkedList::new(),
             queue: Queue::new(waker),
         }
     }
