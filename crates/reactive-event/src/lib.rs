@@ -1,15 +1,16 @@
 #![no_std]
 
-pub mod hkt;
+#[doc(hidden)]
+pub mod __private;
 mod iter;
 mod macros;
 
 use core::{
-    cell::{RefCell, UnsafeCell}, marker::PhantomData, mem, pin::Pin
+    cell::{RefCell, UnsafeCell},
+    pin::Pin,
 };
 
-use hkt::ForLt;
-use hkt_pin_list::{LinkedList, Node};
+use hkt_pin_list::{ForLt, LinkedList, Node, hkt::ForLt};
 use iter::Iter;
 use pin_project::pin_project;
 
@@ -19,7 +20,7 @@ pub struct EventTarget<Hkt: ForLt> {
     guard: RefCell<()>,
     #[debug(skip)]
     #[pin]
-    list: LinkedList<UnsafeCell<Hkt::Of<'static>>>,
+    list: LinkedList<ForLt!(for<'a> UnsafeCell<Hkt::Of<'a>>)>,
 }
 
 impl<Hkt: ForLt> EventTarget<Hkt> {
@@ -34,9 +35,7 @@ impl<Hkt: ForLt> EventTarget<Hkt> {
         let this = self.project_ref();
         let node = listener.project_ref().node;
         // store higher kinded lifetime in static form
-        this.list.push_front(unsafe {
-            mem::transmute::<_, Pin<&Node<UnsafeCell<Hkt::Of<'static>>>>>(node)
-        });
+        this.list.push_front(node);
     }
 }
 
@@ -44,7 +43,7 @@ impl<Hkt: ForLt> EventTarget<Hkt> {
     fn iter<R>(&self, f: impl FnOnce(iter::Iter<Hkt>) -> R) -> R {
         let _guard = self.guard.borrow_mut();
         // Hide static lifetimes in higher kinded lifetimes
-        self.list.iter(|iter| f(Iter { iter, _ph: PhantomData }))
+        self.list.iter(|iter| f(Iter { iter }))
     }
 
     pub fn emit_empty(&self)

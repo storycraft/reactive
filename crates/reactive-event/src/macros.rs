@@ -2,12 +2,9 @@
 macro_rules! EventTarget {
     (for<$($lt:lifetime),*> $($arg:ty)?) => {
         $crate::EventTarget<
-            $crate::hkt::Wrapper<
-                dyn for<'hkt> $crate::hkt::Hkt<
-                    'hkt,
-                    T = dyn for<$($lt),*> ::core::ops::FnMut($($arg)?) -> bool + 'hkt
-                >
-            >
+            $crate::__private::ForLt!(
+                for<'hkt> dyn for<$($lt),*> ::core::ops::FnMut($($arg)?) -> bool + 'hkt
+            )
         >
     };
 

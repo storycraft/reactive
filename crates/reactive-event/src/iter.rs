@@ -1,12 +1,9 @@
-use core::{cell::UnsafeCell, marker::PhantomData};
+use core::cell::UnsafeCell;
 
-use hkt_pin_list::Iter as ListIter;
-
-use crate::hkt::ForLt;
+use hkt_pin_list::{Iter as ListIter, hkt::ForLt};
 
 pub struct Iter<'a, 'b, Hkt: ForLt> {
-    pub(super) iter: ListIter<'a, UnsafeCell<Hkt::Of<'static>>>,
-    pub(super) _ph: PhantomData<&'b mut &'b ()>,
+    pub(super) iter: ListIter<'a, UnsafeCell<Hkt::Of<'b>>>,
 }
 
 impl<'a, 'b, Hkt: ForLt + 'a> Iterator for Iter<'a, 'b, Hkt>

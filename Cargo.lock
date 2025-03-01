@@ -876,9 +876,9 @@ checksum = "fbf6a919d6cf397374f7dfeeea91d974c7c0a7221d0d0f4f20d859d329e53fcc"
 
 [[package]]
 name = "hkt-pin-list"
-version = "0.2.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff8a26f5f930d2645142486b98b799bf8eb5ca45b61f98e67b12a5d8d41596c6"
+checksum = "f871db314de3c4dc5d232b6fefb06c98a59fba3b85ece5de0179338ac6074dec"
 dependencies = [
  "paste",
  "pin-project-lite",
