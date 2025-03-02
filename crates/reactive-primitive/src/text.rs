@@ -7,11 +7,10 @@ use bon::Builder;
 use element::TextElement;
 use palette::Srgba;
 use reactive::{
-    create_element,
+    SetupFn, WithChild, create_element,
     reactivity_winit::state::{StateCell, StateRefCell},
     skia_safe, taffy,
     window::ui::Ui,
-    SetupFn, WithChild,
 };
 
 #[derive(Builder)]

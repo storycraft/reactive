@@ -11,19 +11,18 @@ use glutin::{
     prelude::{GlDisplay, NotCurrentGlContext, PossiblyCurrentGlContext},
     surface::{GlSurface, WindowSurface},
 };
-use glutin_winit::{finalize_window, DisplayBuilder, GlWindow};
+use glutin_winit::{DisplayBuilder, GlWindow, finalize_window};
 use reactivity_winit::winit::{
     event_loop::ActiveEventLoop,
     raw_window_handle::HasWindowHandle,
     window::{Window, WindowAttributes, WindowId},
 };
 use skia_safe::{
-    gpu::{
-        self, backend_render_targets,
-        gl::{FramebufferInfo, Interface},
-        DirectContext, SurfaceOrigin,
-    },
     Canvas, ColorType,
+    gpu::{
+        self, DirectContext, SurfaceOrigin, backend_render_targets,
+        gl::{FramebufferInfo, Interface},
+    },
 };
 
 #[derive(Debug)]

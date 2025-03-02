@@ -13,7 +13,7 @@ use reactivity_winit::{
 use scopeguard::guard;
 use taffy;
 
-use crate::{tree::Tree, Element, ElementId};
+use crate::{Element, ElementId, tree::Tree};
 
 #[derive(Clone)]
 pub struct Ui {

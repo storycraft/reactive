@@ -15,7 +15,7 @@ fn test() {
             false
         }));
         target.bind(listener.as_ref());
-        
+
         let listener2 = pin!(Listener::new(|a: &mut i32| {
             dbg!(*a + 5);
             true

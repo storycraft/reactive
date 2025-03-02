@@ -1,6 +1,6 @@
 use core::{
     future::Future,
-    pin::{pin, Pin},
+    pin::{Pin, pin},
 };
 
 use hkt_pin_list::Node;

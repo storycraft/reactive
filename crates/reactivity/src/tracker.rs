@@ -32,8 +32,7 @@ impl DependencyTracker {
         self.project_ref().dependents.take(|dependents| {
             dependents.iter(|iter| {
                 for dependent in iter {
-                    let queue_node =
-                        unsafe { Pin::new_unchecked(&*dependent.value_pinned().get()) };
+                    let queue_node = unsafe { dependent.value_pinned().as_ref() };
 
                     if !queue_node.linked() {
                         queue.add(queue_node);

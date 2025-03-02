@@ -1,6 +1,6 @@
 use core::{
     cell::Cell,
-    pin::{pin, Pin},
+    pin::{Pin, pin},
     task::Waker,
 };
 

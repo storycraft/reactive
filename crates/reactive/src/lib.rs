@@ -1,16 +1,16 @@
+mod macros;
 pub(crate) mod tree;
 pub mod window;
-mod macros;
 
+pub use reactive_event as event;
 pub use reactivity_winit;
 pub use reactivity_winit::winit;
 pub use skia_safe;
 pub use taffy;
-pub use reactive_event as event;
 
 use core::{
     any::{Any, TypeId},
-    future::{pending, Future},
+    future::{Future, pending},
     pin::Pin,
 };
 use reactivity_winit::winit::{event::WindowEvent, event_loop::ActiveEventLoop};

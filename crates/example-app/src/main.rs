@@ -3,14 +3,13 @@ use core::time::Duration;
 use futures::join;
 use rand::random_range;
 use reactive::{
-    pin_ref,
+    SetupFn, SetupFnWithChildExt, WithChild, pin_ref,
     taffy::{Size, Style},
-    window::{ui::Ui, UiWindow},
+    window::{UiWindow, ui::Ui},
     winit::event_loop::EventLoopBuilder,
-    SetupFn, SetupFnWithChildExt, WithChild,
 };
 use reactive_primitive::{
-    palette::{named, rgb::channels::Argb, Srgba, WithAlpha},
+    palette::{Srgba, WithAlpha, named, rgb::channels::Argb},
     rect::{Fill, Rect},
     text::Text,
 };

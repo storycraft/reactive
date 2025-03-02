@@ -1,7 +1,7 @@
 use core::{
     cell::Cell,
-    future::{poll_fn, Future},
-    pin::{pin, Pin},
+    future::{Future, poll_fn},
+    pin::{Pin, pin},
 };
 
 use pin_project::pin_project;

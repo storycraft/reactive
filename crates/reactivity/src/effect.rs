@@ -1,7 +1,7 @@
 use core::{
     array,
     cell::{Cell, UnsafeCell},
-    pin::{pin, Pin},
+    pin::{Pin, pin},
     ptr::{self},
 };
 
@@ -31,11 +31,13 @@ where
 
     /// # Safety
     /// Borrowed values must remain valid even if [`Effect`] is leaked
-    pub unsafe fn new_unchecked(f: F) -> Self { unsafe {
-        Self {
-            to_queue: Node::new_unchecked(Inner::new(f)),
+    pub unsafe fn new_unchecked(f: F) -> Self {
+        unsafe {
+            Self {
+                to_queue: Node::new_unchecked(Inner::new(f)),
+            }
         }
-    }}
+    }
 
     pub fn init(self: Pin<&mut Self>) {
         let this = self.project();
@@ -152,7 +154,7 @@ impl TrackerBinding {
         Self(Cell::new(ptr::null::<Node<(), dyn EffectFn>>()))
     }
 
-    pub fn get(&self) -> *const Node<dyn EffectFn> {
-        self.0.get()
+    pub unsafe fn as_ref(self: Pin<&Self>) -> Pin<&Node<dyn EffectFn>> {
+        unsafe { Pin::new_unchecked(&*self.0.get()) }
     }
 }

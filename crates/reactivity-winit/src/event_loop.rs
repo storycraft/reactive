@@ -3,7 +3,7 @@ pub mod handler;
 
 use core::{
     future::Future,
-    pin::{pin, Pin},
+    pin::{Pin, pin},
     task::{Context, Poll, Waker},
 };
 use std::rc::Rc;

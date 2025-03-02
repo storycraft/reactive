@@ -1,5 +1,5 @@
 use core::pin::Pin;
-use reactive::{skia_safe, taffy, Element};
+use reactive::{Element, skia_safe, taffy};
 
 pub struct RectElement {
     pub fill_paint: skia_safe::Paint,

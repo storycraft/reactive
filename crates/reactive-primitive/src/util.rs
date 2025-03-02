@@ -2,7 +2,7 @@ pub use reactivity;
 
 use core::pin::Pin;
 
-use reactive::{window::ui::Ui, Element};
+use reactive::{Element, window::ui::Ui};
 
 pub fn use_mut<T: Element>(ui: &Ui, mut f: impl FnMut(Pin<&mut T>)) {
     ui.with_mut(ui.current_id(), &mut f).unwrap();

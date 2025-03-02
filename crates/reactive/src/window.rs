@@ -15,7 +15,7 @@ use skia_safe::Color;
 use state::{Context, WindowState};
 use ui::Ui;
 
-use crate::{tree::Tree, SetupFn};
+use crate::{SetupFn, tree::Tree};
 
 pub struct UiWindow {
     attr: WindowAttributes,
