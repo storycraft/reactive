@@ -3,7 +3,7 @@ macro_rules! EventTarget {
     (for<$($lt:lifetime),*> $($arg:ty)?) => {
         $crate::EventTarget<
             $crate::__private::ForLt!(
-                for<'hkt> dyn for<$($lt),*> ::core::ops::FnMut($($arg)?) -> bool + 'hkt
+                for<'__fn> dyn for<$($lt),*> ::core::ops::FnMut($($arg)?) -> bool + '__fn
             )
         >
     };
