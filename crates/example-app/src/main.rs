@@ -1,4 +1,4 @@
-use core::time::Duration;
+use core::{pin::pin, time::Duration};
 
 use futures::join;
 use rand::random_range;
@@ -28,9 +28,6 @@ fn main() {
 }
 
 async fn async_main() {
-    let win = UiWindow::new();
-    pin_ref!(win);
-
     let input = StateCell::new(0);
     pin_ref!(input);
 
@@ -53,38 +50,34 @@ async fn async_main() {
         }
     });
 
-    win.show(|ui: Ui| async move {
-        let effect_ui = ui.clone();
-        let_effect!({
-            let _ = effect_ui.with_window(|window| {
-                println!("window loaded {:?}", window);
-            }, $);
-        });
+    pin!(UiWindow::new())
+        .into_ref()
+        .show(|ui: Ui| async move {
+            let effect_ui = ui.clone();
+            let_effect!({
+                let _ = effect_ui.with_window(|window| {
+                    println!("window loaded {:?}", window);
+                }, $);
+            });
 
-        join!(
-            flash_block
-                .child(|ui: Ui| async move {
-                    join!(
-                        flash_block.show(ui.clone()),
-                        flash_block.show(ui.clone()),
-                        flash_block.show(ui)
-                    )
-                })
-                .show(ui.clone()),
-            flash_block.show(ui.clone()),
-            flash_block.show(ui),
-        );
-    })
-    .await;
+            join!(
+                flash_block
+                    .child(|ui: Ui| async move {
+                        join!(
+                            flash_block.show(ui.clone()),
+                            flash_block.show(ui.clone()),
+                            flash_block.show(ui)
+                        )
+                    })
+                    .show(ui.clone()),
+                flash_block.show(ui.clone()),
+                flash_block.show(ui),
+            );
+        })
+        .await;
 }
 
 async fn flash_block<Child: SetupFn>(ui: Ui, child: Child) -> Child::Output {
-    let layout = StateRefCell::new(Style {
-        size: Size::from_percent(0.3, 0.3),
-        ..Style::DEFAULT
-    });
-    pin_ref!(layout);
-
     let text = StateRefCell::new(String::new());
     pin_ref!(text);
 
@@ -111,7 +104,13 @@ async fn flash_block<Child: SetupFn>(ui: Ui, child: Child) -> Child::Output {
     });
 
     Rect::builder()
-        .layout(layout)
+        .layout(
+            pin!(StateRefCell::new(Style {
+                size: Size::from_percent(0.3, 0.3),
+                ..Style::DEFAULT
+            }))
+            .into_ref(),
+        )
         .fill(Fill::builder().color(color).build())
         .build()
         .child(
