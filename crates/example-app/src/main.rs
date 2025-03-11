@@ -53,9 +53,8 @@ async fn async_main() {
     pin!(UiWindow::new())
         .into_ref()
         .show(|ui: Ui| async move {
-            let effect_ui = ui.clone();
             let_effect!({
-                let _ = effect_ui.with_window(|window| {
+                let _ = ui.with_window(|window| {
                     println!("window loaded {:?}", window);
                 }, $);
             });
@@ -71,7 +70,7 @@ async fn async_main() {
                     })
                     .show(ui.clone()),
                 flash_block.show(ui.clone()),
-                flash_block.show(ui),
+                flash_block.show(ui.clone()),
             );
         })
         .await;
