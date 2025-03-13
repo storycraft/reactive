@@ -9,7 +9,7 @@ use reactive_tree::{ElementId, element::Element, tree::UiTree};
 use reactivity::effect::Binding;
 use reactivity_winit::{
     state::StateCell,
-    winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window},
+    winit::{event::WindowEvent, window::Window},
 };
 use scopeguard::guard;
 
@@ -89,8 +89,8 @@ impl Ui {
         tree.draw(canvas);
     }
 
-    pub fn dispatch_window_event(&self, el: &ActiveEventLoop, event: &mut WindowEvent) {
-        self.inner.tree.borrow_mut().window_event(el, event);
+    pub fn dispatch_window_event(&self, event: &mut WindowEvent) {
+        self.inner.tree.borrow_mut().window_event(event);
     }
 
     pub fn change_window(&self, window: Window) {
