@@ -22,7 +22,7 @@ impl Rect {
     }
 
     // TODO:: cleanup code
-    pub(super) fn hittest(&self, x: f64, y: f64, layout: &taffy::Layout) -> bool {
+    pub(super) fn hit_test(&self, x: f64, y: f64, layout: &taffy::Layout) -> bool {
         let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
 
         if self.is_rrect() {

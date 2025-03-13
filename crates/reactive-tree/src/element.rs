@@ -86,12 +86,12 @@ impl Element {
         taffy::Size::zero()
     }
 
-    pub fn hittest(&self, x: f64, y: f64) -> bool {
+    pub fn hit_test(&self, x: f64, y: f64) -> bool {
         let Some(ref rect) = self.rect else {
             return false;
         };
 
-        rect.hittest(x, y, self.node.layout())
+        rect.hit_test(x, y, self.node.layout())
     }
 
     pub(super) fn pre_child_draw(&self, canvas: &skia_safe::Canvas) {
@@ -116,7 +116,7 @@ impl Element {
 
     pub(super) fn dispatch_event(&self, _: &ActiveEventLoop, event: &mut WindowEvent) {
         if let WindowEvent::CursorMoved { position, .. } = event {
-            if !self.hittest(position.x, position.y) {
+            if !self.hit_test(position.x, position.y) {
                 return;
             }
 
