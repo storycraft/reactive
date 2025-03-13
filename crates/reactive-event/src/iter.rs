@@ -15,6 +15,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.iter.next()?;
 
-        Some(unsafe { &mut *(next.value().get() as *mut Hkt::Of<'b>) })
+        Some(unsafe { &mut *next.value().get() })
     }
 }

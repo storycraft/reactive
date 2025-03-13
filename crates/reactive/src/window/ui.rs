@@ -69,7 +69,7 @@ impl Ui {
     }
 
     pub fn request_layout(&self) {
-        self.inner.tree.borrow_mut().mark_dirty(self.current);;
+        self.inner.tree.borrow_mut().mark_dirty(self.current);
     }
 
     pub fn request_redraw(&self) {
