@@ -12,6 +12,7 @@ use reactivity_winit::{
     winit::{event::WindowEvent, window::Window},
 };
 use scopeguard::guard;
+use taffy::Style;
 
 #[derive(Clone)]
 pub struct Ui {
@@ -116,14 +117,16 @@ impl Ui {
             .append(self.current, Box::pin(element))
     }
 
-    #[must_use]
-    pub fn with_ref<R>(&self, id: ElementId, f: impl FnOnce(Pin<&Element>) -> R) -> Option<R> {
-        Some(f(self.inner.tree.borrow().get(id)?))
+    pub fn with_ref<R>(&self, f: impl FnOnce(Pin<&Element>) -> R) -> Option<R> {
+        Some(f(self.inner.tree.borrow().get(self.current)?))
     }
 
-    #[must_use]
-    pub fn with_mut<R>(&self, id: ElementId, f: impl FnOnce(Pin<&mut Element>) -> R) -> Option<R> {
-        Some(f(self.inner.tree.borrow_mut().get_mut(id)?))
+    pub fn with_mut<R>(&self, f: impl FnOnce(Pin<&mut Element>) -> R) -> Option<R> {
+        Some(f(self.inner.tree.borrow_mut().get_mut(self.current)?))
+    }
+
+    pub fn with_style<R>(&self, f: impl FnOnce(&mut Style) -> R) -> R {
+        f(self.inner.tree.borrow_mut().style_mut(self.current))
     }
 
     pub fn remove(&self, id: ElementId) -> Option<Pin<Box<Element>>> {
