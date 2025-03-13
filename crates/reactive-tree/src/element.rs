@@ -54,6 +54,10 @@ impl Element {
         }
     }
 
+    pub fn node(&self) -> &Node {
+        &self.node
+    }
+
     pub fn node_mut(self: Pin<&mut Self>) -> &mut Node {
         self.project().node
     }
