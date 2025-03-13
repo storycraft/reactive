@@ -8,7 +8,7 @@ use ::taffy::{AvailableSpace, Size, Style, compute_root_layout, round_layout};
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
+use winit::event::WindowEvent;
 
 use crate::{ElementId, element::Element};
 
@@ -115,21 +115,20 @@ impl UiTree {
         }
     }
 
-    pub fn window_event(&self, el: &ActiveEventLoop, event: &mut WindowEvent) {
+    pub fn window_event(&self, event: &mut WindowEvent) {
         fn event_inner(
             tree: &UiTree,
-            el: &ActiveEventLoop,
             event: &mut WindowEvent,
             id: ElementId,
         ) {
             let element = &tree.map[id];
-            element.dispatch_event(el, event);
+            element.dispatch_event(event);
             for child in &tree.relations[id].children {
-                event_inner(tree, el, event, *child);
+                event_inner(tree, event, *child);
             }
         }
 
-        event_inner(self, el, event, self.root);
+        event_inner(self, event, self.root);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {

@@ -8,7 +8,7 @@ use reactive_event::EventTarget;
 use rect::Rect;
 use taffy::Style;
 use text::Text;
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop};
+use winit::event::WindowEvent;
 
 use crate::tree::node::Node;
 
@@ -114,7 +114,7 @@ impl Element {
         }
     }
 
-    pub(super) fn dispatch_event(&self, _: &ActiveEventLoop, event: &mut WindowEvent) {
+    pub(super) fn dispatch_event(&self, event: &mut WindowEvent) {
         if let WindowEvent::CursorMoved { position, .. } = event {
             if !self.hit_test(position.x, position.y) {
                 return;

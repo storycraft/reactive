@@ -83,3 +83,18 @@ pub fn create_element<F: SetupFn>(style: Style, f: F) -> impl SetupFn<Output = F
         f.show(ui.sub_ui(id)).await
     }
 }
+
+pub fn element<F: SetupFn>(f: F) -> impl SetupFn<Output = F::Output> {
+    |ui: Ui| async move {
+        let id = ui.append(Element::new(Style::DEFAULT)).unwrap();
+        defer!({
+            _ = ui.remove(id);
+        });
+
+        f.show(ui.sub_ui(id)).await
+    }
+}
+
+pub fn styled(style: Style) {
+
+}
