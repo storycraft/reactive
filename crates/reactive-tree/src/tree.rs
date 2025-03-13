@@ -116,11 +116,7 @@ impl UiTree {
     }
 
     pub fn window_event(&self, event: &mut WindowEvent) {
-        fn event_inner(
-            tree: &UiTree,
-            event: &mut WindowEvent,
-            id: ElementId,
-        ) {
+        fn event_inner(tree: &UiTree, event: &mut WindowEvent, id: ElementId) {
             let element = &tree.map[id];
             element.dispatch_event(event);
             for child in &tree.relations[id].children {
@@ -166,6 +162,11 @@ impl UiTree {
         }
 
         clear_inner(&mut self.map, &self.relations, id);
+    }
+
+    pub fn style_mut(&mut self, id: ElementId) -> &mut Style {
+        self.mark_dirty(id);
+        &mut self.map[id].as_mut().node_mut().style
     }
 
     pub fn set_style(&mut self, id: ElementId, style: Style) {
