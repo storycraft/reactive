@@ -73,7 +73,7 @@ impl WinitWindow for UiWindow {
         self.ui.close();
     }
 
-    fn on_window_event(self: Pin<&Self>, el: &ActiveEventLoop, event: &mut WindowEvent) {
+    fn on_window_event(self: Pin<&Self>, _el: &ActiveEventLoop, event: &mut WindowEvent) {
         let WindowState::Init(cx) = &mut *self.state.borrow_mut() else {
             return;
         };
@@ -98,6 +98,6 @@ impl WinitWindow for UiWindow {
             _ => {}
         }
 
-        self.ui.dispatch_window_event(el, event);
+        self.ui.dispatch_window_event(event);
     }
 }
