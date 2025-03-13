@@ -84,7 +84,9 @@ impl Ui {
         if inner.draw_queued.get() {
             inner.draw_queued.set(false);
         }
-        inner.tree.borrow_mut().draw(canvas);
+        let mut tree = inner.tree.borrow_mut();
+        tree.update_layout();
+        tree.draw(canvas);
     }
 
     pub fn dispatch_window_event(&self, el: &ActiveEventLoop, event: &mut WindowEvent) {

@@ -136,7 +136,7 @@ impl UiTree {
         self.size = (width, height);
     }
 
-    pub fn draw(&mut self, canvas: &Canvas) {
+    pub fn draw(&self, canvas: &Canvas) {
         fn draw_inner(tree: &UiTree, canvas: &Canvas, id: ElementId) {
             let element = &tree.map[id];
             element.draw(canvas);
@@ -150,17 +150,6 @@ impl UiTree {
                 element.post_child_draw(canvas);
             }
         }
-
-        let (width, height) = self.size;
-        compute_root_layout(
-            self,
-            self.root.to_taffy_id(),
-            Size {
-                width: AvailableSpace::Definite(width as _),
-                height: AvailableSpace::Definite(height as _),
-            },
-        );
-        round_layout(self, self.root.to_taffy_id());
 
         draw_inner(self, canvas, self.root);
     }
@@ -187,6 +176,19 @@ impl UiTree {
 
         element.as_mut().node_mut().style = style;
         self.mark_dirty(id);
+    }
+
+    pub fn update_layout(&mut self) {
+        let (width, height) = self.size;
+        compute_root_layout(
+            self,
+            self.root.to_taffy_id(),
+            Size {
+                width: AvailableSpace::Definite(width as _),
+                height: AvailableSpace::Definite(height as _),
+            },
+        );
+        round_layout(self, self.root.to_taffy_id());
     }
 }
 
