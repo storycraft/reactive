@@ -1,13 +1,14 @@
-use core::pin::Pin;
-use reactive::{Element, skia_safe, taffy};
+use skia_safe::Contains;
 
-pub struct RectElement {
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct Rect {
     pub fill_paint: skia_safe::Paint,
     pub stroke_paint: skia_safe::Paint,
     pub border_radius: [skia_safe::Point; 4],
 }
 
-impl RectElement {
+impl Rect {
     pub fn new() -> Self {
         Self {
             fill_paint: skia_safe::Paint::new(skia_safe::colors::TRANSPARENT, None),
@@ -15,14 +16,28 @@ impl RectElement {
             border_radius: [skia_safe::Point::new(0.0, 0.0); 4],
         }
     }
-}
 
-impl Element for RectElement {
-    fn draw(self: Pin<&Self>, canvas: &skia_safe::Canvas, layout: &taffy::Layout) {
+    pub fn is_rrect(&self) -> bool {
+        !self.border_radius.iter().all(|radius| radius.is_zero())
+    }
+
+    // TODO:: cleanup code
+    pub(super) fn hittest(&self, x: f64, y: f64, layout: &taffy::Layout) -> bool {
+        let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
+
+        if self.is_rrect() {
+            // TODO
+            false
+        } else {
+            rect.contains(skia_safe::Point::new(x as _, y as _))
+        }
+    }
+
+    pub(super) fn draw(&self, canvas: &skia_safe::Canvas, layout: &taffy::Layout) {
         let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
 
         let border_radius = &self.border_radius;
-        let draw_rrect = !border_radius.iter().all(|radius| radius.is_zero());
+        let draw_rrect = self.is_rrect();
 
         let fill_paint = &self.fill_paint;
         if !fill_paint.nothing_to_draw() {
@@ -47,5 +62,11 @@ impl Element for RectElement {
                 canvas.draw_rect(rect, stroke_paint);
             }
         }
+    }
+}
+
+impl Default for Rect {
+    fn default() -> Self {
+        Self::new()
     }
 }

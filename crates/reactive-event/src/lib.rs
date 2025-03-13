@@ -46,55 +46,53 @@ impl<Hkt: ForLt> EventTarget<Hkt> {
 
     pub fn emit_empty(&self)
     where
-        for<'a> Hkt::Of<'a>: FnMut() -> bool,
+        for<'a> Hkt::Of<'a>: FnMut(),
     {
         self.iter(|iter| {
             for f in iter {
-                if !f() {
-                    break;
-                }
+                f();
             }
         });
     }
 
     pub fn emit<T>(&self, value: T)
     where
-        for<'a> Hkt::Of<'a>: FnMut(T) -> bool,
+        for<'a> Hkt::Of<'a>: FnMut(T),
         T: Copy,
     {
         self.iter(|iter| {
             for f in iter {
-                if !f(value) {
-                    break;
-                }
+                f(value);
             }
         });
     }
 
     pub fn emit_ref<T>(&self, value: &T)
     where
-        for<'a> Hkt::Of<'a>: FnMut(&T) -> bool,
+        for<'a> Hkt::Of<'a>: FnMut(&T),
     {
         self.iter(|iter| {
             for f in iter {
-                if !f(value) {
-                    break;
-                }
+                f(value);
             }
         });
     }
 
     pub fn emit_mut<T>(&self, value: &mut T)
     where
-        for<'a> Hkt::Of<'a>: FnMut(&mut T) -> bool,
+        for<'a> Hkt::Of<'a>: FnMut(&mut T),
     {
         self.iter(|iter| {
             for f in iter {
-                if !f(value) {
-                    break;
-                }
+                f(value);
             }
         });
+    }
+}
+
+impl<Hkt: ForLt> Default for EventTarget<Hkt> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

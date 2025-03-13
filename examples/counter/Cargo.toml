@@ -1,5 +1,6 @@
 [package]
-name = "example-app"
+name = "counter"
+publish = false
 version.workspace = true
 edition.workspace = true
 authors = ["storycraft <storycraft@pancake.sh>"]
@@ -9,7 +10,6 @@ license.workspace = true
 reactivity.workspace = true
 reactivity-winit.workspace = true
 reactive.workspace = true
-reactive-primitive.workspace = true
 
 pin-project = "1.1.9"
 tokio = { version = "1.43.0", features = ["full"] }

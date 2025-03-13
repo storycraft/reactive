@@ -5,15 +5,13 @@ use core::{
 use std::rc::Rc;
 
 use pin_project::pin_project;
+use reactive_tree::{ElementId, element::Element, tree::UiTree};
 use reactivity::effect::Binding;
 use reactivity_winit::{
     state::StateCell,
     winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window},
 };
 use scopeguard::guard;
-use taffy;
-
-use crate::{Element, ElementId, tree::Tree};
 
 #[derive(Clone)]
 pub struct Ui {
@@ -22,7 +20,7 @@ pub struct Ui {
 }
 
 impl Ui {
-    pub fn new_root(window: Option<Window>, tree: Tree) -> Self {
+    pub fn new_root(window: Option<Window>, tree: UiTree) -> Self {
         let current = tree.root();
 
         Self {
@@ -71,7 +69,7 @@ impl Ui {
     }
 
     pub fn request_layout(&self) {
-        self.inner.tree.borrow_mut().mark_dirty(self.current);
+        self.inner.tree.borrow_mut().mark_dirty(self.current);;
     }
 
     pub fn request_redraw(&self) {
@@ -109,44 +107,25 @@ impl Ui {
         self.inner.as_ref().window().take()
     }
 
-    pub fn append<T>(&self, layout: taffy::Style, element: T) -> ElementId
-    where
-        T: Element + 'static,
-    {
-        let mut tree = self.inner.tree.borrow_mut();
-        let id = tree.create(layout, element);
-        tree.append(self.current, id);
-        id
+    pub fn append(&self, element: Element) -> Option<ElementId> {
+        self.inner
+            .tree
+            .borrow_mut()
+            .append(self.current, Box::pin(element))
     }
 
     #[must_use]
-    pub fn with_ref<T: Element, R>(
-        &self,
-        id: ElementId,
-        f: impl FnOnce(Pin<&T>) -> R,
-    ) -> Option<R> {
+    pub fn with_ref<R>(&self, id: ElementId, f: impl FnOnce(Pin<&Element>) -> R) -> Option<R> {
         Some(f(self.inner.tree.borrow().get(id)?))
     }
 
     #[must_use]
-    pub fn with_mut<T: Element, R>(
-        &self,
-        id: ElementId,
-        f: impl FnOnce(Pin<&mut T>) -> R,
-    ) -> Option<R> {
+    pub fn with_mut<R>(&self, id: ElementId, f: impl FnOnce(Pin<&mut Element>) -> R) -> Option<R> {
         Some(f(self.inner.tree.borrow_mut().get_mut(id)?))
     }
 
-    pub fn remove_child(&self, id: ElementId) {
-        self.inner.tree.borrow_mut().remove_child(self.current, id)
-    }
-
-    pub fn remove(&self, id: ElementId) {
+    pub fn remove(&self, id: ElementId) -> Option<Pin<Box<Element>>> {
         self.inner.tree.borrow_mut().remove(id)
-    }
-
-    pub fn set_style(&self, style: taffy::Style) {
-        self.inner.tree.borrow_mut().set_style(self.current, style);
     }
 }
 
@@ -155,7 +134,7 @@ struct Inner {
     #[pin]
     window: StateCell<Option<Window>>,
     draw_queued: Cell<bool>,
-    tree: RefCell<Tree>,
+    tree: RefCell<UiTree>,
 }
 
 impl Inner {

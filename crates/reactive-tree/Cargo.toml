@@ -1,0 +1,19 @@
+[package]
+name = "reactive-tree"
+description = "Stateless gui tree"
+version.workspace = true
+edition.workspace = true
+authors = ["storycraft <storycraft@pancake.sh>"]
+license.workspace = true
+
+[dependencies]
+reactive-event.workspace = true
+
+palette = "0.7.6"
+pin-project = "1.1.9"
+taffy = { version = "0.7.5", default-features = false, features = ["flexbox"] }
+skia-safe = "0.82.0"
+derive_more = { version = "2.0.1", features = ["full"] }
+winit = "0.30.9"
+bitflags = "2.9.0"
+slotmap = "1.0.7"

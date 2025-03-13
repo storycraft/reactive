@@ -12,13 +12,11 @@ fn main() {
             dbg!(*a + b);
             *a += 1;
             b += 2;
-            false
         }));
         target.bind(listener);
 
         let listener2 = pin!(Listener::new(|a: &mut i32| {
             dbg!(*a + 5);
-            true
         }));
         target.bind(listener2);
 

@@ -3,6 +3,7 @@ pub mod ui;
 
 use core::{cell::RefCell, num::NonZeroU32, pin::Pin};
 use glutin_winit::DisplayBuilder;
+use reactive_tree::tree::UiTree;
 use reactivity_winit::{
     event_loop::handler::{self, WinitWindow},
     winit::{
@@ -15,7 +16,7 @@ use skia_safe::Color;
 use state::{Context, WindowState};
 use ui::Ui;
 
-use crate::{SetupFn, tree::Tree};
+use crate::SetupFn;
 
 pub struct UiWindow {
     attr: WindowAttributes,
@@ -25,13 +26,16 @@ pub struct UiWindow {
 
 impl UiWindow {
     pub fn new() -> Self {
-        let attr = WindowAttributes::default();
+        Self::new_with_attr(WindowAttributes::default())
+    }
+
+    pub fn new_with_attr(attr: WindowAttributes) -> Self {
         let builder = DisplayBuilder::new().with_window_attributes(Some(attr.clone()));
 
         Self {
             state: RefCell::new(WindowState::new(builder)),
             attr,
-            ui: Ui::new_root(None, Tree::new()),
+            ui: Ui::new_root(None, UiTree::new()),
         }
     }
 
