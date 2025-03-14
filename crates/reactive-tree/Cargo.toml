@@ -17,3 +17,4 @@ derive_more = { version = "2.0.1", features = ["full"] }
 winit = "0.30.9"
 bitflags = "2.9.0"
 slotmap = "1.0.7"
+nalgebra = "0.33.2"

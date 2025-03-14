@@ -10,12 +10,14 @@ use taffy::Style;
 use text::Text;
 use winit::event::WindowEvent;
 
-use crate::tree::node::Node;
+use crate::{transform::Transform, tree::node::Node};
 
 #[derive(Debug)]
 #[pin_project]
 pub struct Element {
     pub(crate) node: Node,
+
+    pub transform: Transform,
 
     pub rect: Option<Rect>,
     pub text: Option<Text>,
@@ -40,6 +42,8 @@ impl Element {
     pub fn new(style: Style) -> Self {
         Self {
             node: Node::new(style),
+
+            transform: Transform::new(),
 
             rect: None,
             text: None,

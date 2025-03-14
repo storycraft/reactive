@@ -3,6 +3,7 @@ pub mod element;
 pub mod event;
 pub mod screen;
 pub mod tree;
+pub mod transform;
 
 use slotmap::{KeyData, new_key_type};
 use taffy::NodeId;
