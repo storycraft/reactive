@@ -77,7 +77,7 @@ impl Ui {
     }
 
     pub fn draw(&self, canvas: &skia_safe::Canvas) {
-        let inner = self.inner.as_ref();
+        let inner = &self.inner;
         if inner.draw_queued.get() {
             inner.draw_queued.set(false);
         }

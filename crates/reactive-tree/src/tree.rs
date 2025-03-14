@@ -140,10 +140,10 @@ impl UiTree {
                     draw_inner(tree, canvas, *child);
                 }
             }
-            element.post_draw(canvas);
         }
 
         draw_inner(self, canvas, self.root);
+        canvas.reset_matrix();
     }
 
     pub fn mark_dirty(&mut self, id: ElementId) {

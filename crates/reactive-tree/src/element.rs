@@ -116,10 +116,6 @@ impl Element {
         canvas.translate((layout.location.x, layout.location.y));
     }
 
-    pub(super) fn post_draw(&self, canvas: &skia_safe::Canvas) {
-        canvas.reset_matrix();
-    }
-
     pub fn draw(&self, canvas: &skia_safe::Canvas) {
         if let Some(ref rect) = self.rect {
             rect.draw(canvas, self.node.layout());
