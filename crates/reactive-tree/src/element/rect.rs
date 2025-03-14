@@ -1,4 +1,4 @@
-use skia_safe::Contains;
+use skia_safe::{Contains, RRect};
 
 #[non_exhaustive]
 #[derive(Debug)]
@@ -26,8 +26,15 @@ impl Rect {
         let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
 
         if self.is_rrect() {
-            // TODO
-            false
+            const NEARLY_ZERO: f32 = 1.0_f32 / (1 << 12) as f32;
+            // https://github.com/google/skia/blob/f4467ff38f1f0495307b3fe8cf4a3f564c33f7f3/modules/sksg/src/SkSGRect.cpp#L64
+            // wth
+            RRect::new_rect_radii(rect, &self.border_radius).contains(&skia_safe::Rect::new(
+                x - NEARLY_ZERO,
+                y - NEARLY_ZERO,
+                x + NEARLY_ZERO,
+                y + NEARLY_ZERO,
+            ))
         } else {
             rect.contains(skia_safe::Point::new(x, y))
         }
