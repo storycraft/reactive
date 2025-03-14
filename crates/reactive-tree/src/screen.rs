@@ -34,8 +34,8 @@ impl ScreenRect {
     }
 
     #[inline]
-    pub const fn is_none(&self) -> bool {
-        self.width == 0 && self.height == 0
+    pub const fn is_empty(&self) -> bool {
+        self.width == 0 || self.height == 0
     }
 
     #[inline]
