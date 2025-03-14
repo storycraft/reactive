@@ -4,7 +4,6 @@ use taffy::{Cache, Layout, Style};
 pub struct Node {
     pub(super) style: Style,
     pub(super) cache: Cache,
-    pub(super) unrounded_layout: Layout,
     pub(super) layout: Layout,
 }
 
@@ -13,7 +12,6 @@ impl Node {
         Self {
             style,
             cache: Cache::new(),
-            unrounded_layout: Layout::new(),
             layout: Layout::new(),
         }
     }

@@ -84,7 +84,6 @@ impl WinitWindow for UiWindow {
                     (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
                 {
                     cx.resize(width, height);
-                    self.ui.resize(width.get(), height.get());
                 }
             }
 

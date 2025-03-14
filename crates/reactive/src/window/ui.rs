@@ -1,11 +1,10 @@
 use core::{
-    cell::{Cell, RefCell},
-    pin::Pin,
+    cell::{Cell, RefCell}, num::NonZeroU32, pin::Pin
 };
 use std::rc::Rc;
 
 use pin_project::pin_project;
-use reactive_tree::{ElementId, element::Element, tree::UiTree};
+use reactive_tree::{ElementId, element::Element, screen::ScreenRect, tree::UiTree};
 use reactivity::effect::Binding;
 use reactivity_winit::{
     state::StateCell,
@@ -65,10 +64,6 @@ impl Ui {
         Some(f(&window))
     }
 
-    pub fn resize(&self, width: u32, height: u32) {
-        self.inner.tree.borrow_mut().resize(width, height);
-    }
-
     pub fn request_layout(&self) {
         self.inner.tree.borrow_mut().mark_dirty(self.current);
     }
@@ -91,14 +86,30 @@ impl Ui {
     }
 
     pub fn dispatch_window_event(&self, event: &mut WindowEvent) {
-        self.inner.tree.borrow_mut().window_event(event);
+        let mut tree = self.inner.tree.borrow_mut();
+
+        match event {
+            WindowEvent::Resized(size) => {
+                tree.screen.width = size.width;
+                tree.screen.height = size.height;
+            }
+
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                tree.screen.scale_factor = *scale_factor as _;
+            }
+
+            _ => {}
+        }
+
+        tree.window_event(event);
     }
 
     pub fn change_window(&self, window: Window) {
         let size = window.inner_size();
         let inner = self.inner.as_ref();
 
-        inner.tree.borrow_mut().resize(size.width, size.height);
+        inner.tree.borrow_mut().screen =
+            ScreenRect::new(0, 0, size.width, size.height, window.scale_factor() as _);
         if inner.draw_queued.get() {
             window.request_redraw();
         }

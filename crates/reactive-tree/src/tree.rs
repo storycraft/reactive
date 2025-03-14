@@ -4,13 +4,13 @@ mod taffy;
 
 use core::pin::Pin;
 
-use ::taffy::{AvailableSpace, Size, Style, compute_root_layout, round_layout};
+use ::taffy::{AvailableSpace, Size, Style, compute_root_layout};
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
 use winit::event::WindowEvent;
 
-use crate::{ElementId, element::Element};
+use crate::{ElementId, element::Element, screen::ScreenRect};
 
 type ElementMap = SlotMap<ElementId, Pin<Box<Element>>>;
 type RelationMap = SecondaryMap<ElementId, Relation>;
@@ -19,7 +19,7 @@ type RelationMap = SecondaryMap<ElementId, Relation>;
 pub struct UiTree {
     map: ElementMap,
     relations: RelationMap,
-    size: (u32, u32),
+    pub screen: ScreenRect,
     root: ElementId,
 }
 
@@ -43,7 +43,7 @@ impl UiTree {
         Self {
             map,
             relations,
-            size: (0, 0),
+            screen: ScreenRect::ZERO,
             root,
         }
     }
@@ -127,10 +127,6 @@ impl UiTree {
         event_inner(self, event, self.root);
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.size = (width, height);
-    }
-
     pub fn draw(&self, canvas: &Canvas) {
         fn draw_inner(tree: &UiTree, canvas: &Canvas, id: ElementId) {
             let element = &tree.map[id];
@@ -179,16 +175,15 @@ impl UiTree {
     }
 
     pub fn update_layout(&mut self) {
-        let (width, height) = self.size;
+        let (width, height) = self.screen.logical_size();
         compute_root_layout(
             self,
             self.root.to_taffy_id(),
             Size {
-                width: AvailableSpace::Definite(width as _),
-                height: AvailableSpace::Definite(height as _),
+                width: AvailableSpace::Definite(width),
+                height: AvailableSpace::Definite(height),
             },
         );
-        round_layout(self, self.root.to_taffy_id());
     }
 }
 

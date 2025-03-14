@@ -2,9 +2,9 @@ mod iter;
 
 use iter::Iter;
 use taffy::{
-    AvailableSpace, CacheTree, Display, Layout, NodeId, RoundTree, Size, Style,
-    compute_block_layout, compute_cached_layout, compute_flexbox_layout, compute_grid_layout,
-    compute_hidden_layout, compute_leaf_layout,
+    AvailableSpace, CacheTree, Display, Layout, NodeId, Size, Style, compute_block_layout,
+    compute_cached_layout, compute_flexbox_layout, compute_grid_layout, compute_hidden_layout,
+    compute_leaf_layout,
 };
 
 use crate::ElementId;
@@ -45,7 +45,7 @@ impl taffy::LayoutPartialTree for UiTree {
         self.map[ElementId::from_taffy_id(id)]
             .as_mut()
             .node_mut()
-            .unrounded_layout = *layout;
+            .layout = *layout;
     }
 
     fn compute_child_layout(
@@ -73,19 +73,6 @@ impl taffy::LayoutPartialTree for UiTree {
                 }
             }
         })
-    }
-}
-
-impl RoundTree for UiTree {
-    fn get_unrounded_layout(&self, id: NodeId) -> &Layout {
-        &self.map[ElementId::from_taffy_id(id)].node.unrounded_layout
-    }
-
-    fn set_final_layout(&mut self, id: NodeId, layout: &Layout) {
-        self.map[ElementId::from_taffy_id(id)]
-            .as_mut()
-            .node_mut()
-            .layout = *layout;
     }
 }
 
