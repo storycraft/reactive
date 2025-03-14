@@ -96,7 +96,7 @@ impl Element {
         taffy::Size::zero()
     }
 
-    pub(super) fn hit_test(&self, x: f32, y: f32) -> bool {
+    pub fn hit_test(&self, x: f32, y: f32) -> bool {
         let Some(ref rect) = self.rect else {
             return false;
         };
