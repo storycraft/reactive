@@ -9,7 +9,7 @@ pub struct DrawContext {
 }
 
 impl DrawContext {
-    pub fn new(screen: ScreenRect, canvas: Canvas) -> Self {
+    pub const fn new(screen: ScreenRect, canvas: Canvas) -> Self {
         Self { screen, canvas }
     }
 }

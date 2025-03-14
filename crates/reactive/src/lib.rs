@@ -8,7 +8,7 @@ pub use reactivity_winit::winit;
 pub use skia_safe;
 pub use taffy;
 
-use core::future::{pending, Future};
+use core::future::{Future, pending};
 use reactive_tree::element::Element;
 use scopeguard::defer;
 use taffy::Style;
@@ -54,4 +54,3 @@ pub fn div<F: SetupFn>(f: F) -> impl SetupFn<Output = F::Output> {
         f.show(ui.sub_ui(id)).await
     }
 }
-

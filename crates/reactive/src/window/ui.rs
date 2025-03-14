@@ -1,5 +1,6 @@
 use core::{
-    cell::{Cell, RefCell}, num::NonZeroU32, pin::Pin
+    cell::{Cell, RefCell},
+    pin::Pin,
 };
 use std::rc::Rc;
 
