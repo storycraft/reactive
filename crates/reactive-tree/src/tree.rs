@@ -5,6 +5,7 @@ mod taffy;
 use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout};
+use nalgebra::Matrix4;
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
@@ -130,16 +131,16 @@ impl UiTree {
     pub fn draw(&self, canvas: &Canvas) {
         fn draw_inner(tree: &UiTree, canvas: &Canvas, id: ElementId) {
             let element = &tree.map[id];
+            element.pre_draw(canvas);
             element.draw(canvas);
 
             let children = &tree.relations[id].children;
             if !children.is_empty() {
-                element.pre_child_draw(canvas);
                 for child in children {
                     draw_inner(tree, canvas, *child);
                 }
-                element.post_child_draw(canvas);
             }
+            element.post_draw(canvas);
         }
 
         draw_inner(self, canvas, self.root);
@@ -174,7 +175,24 @@ impl UiTree {
         self.mark_dirty(id);
     }
 
-    pub fn update_layout(&mut self) {
+    pub fn update(&mut self) {
+        fn update_matrix_inner(
+            elements: &mut ElementMap,
+            relations: &RelationMap,
+            parent_matrix: Matrix4<f32>,
+            id: ElementId,
+        ) {
+            let Some(element) = elements.get_mut(id) else {
+                return;
+            };
+            let matrix = parent_matrix * element.transform.to_matrix();
+            element.as_mut().node_mut().matrix = matrix;
+
+            for &child in &relations[id].children {
+                update_matrix_inner(elements, relations, matrix, child);
+            }
+        }
+
         let (width, height) = self.screen.logical_size();
         compute_root_layout(
             self,
@@ -183,6 +201,12 @@ impl UiTree {
                 width: AvailableSpace::Definite(width),
                 height: AvailableSpace::Definite(height),
             },
+        );
+        update_matrix_inner(
+            &mut self.map,
+            &self.relations,
+            Matrix4::identity(),
+            self.root,
         );
     }
 }

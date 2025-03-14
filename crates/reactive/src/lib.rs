@@ -1,5 +1,6 @@
 mod macros;
 pub mod window;
+mod ext;
 
 pub use reactive_event as event;
 pub use reactive_tree::{ElementId, element};
@@ -7,6 +8,7 @@ pub use reactivity_winit;
 pub use reactivity_winit::winit;
 pub use skia_safe;
 pub use taffy;
+pub use ext::*;
 
 use core::future::{Future, pending};
 use reactive_tree::element::Element;

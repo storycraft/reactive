@@ -22,14 +22,14 @@ impl Rect {
     }
 
     // TODO:: cleanup code
-    pub(super) fn hit_test(&self, x: f64, y: f64, layout: &taffy::Layout) -> bool {
+    pub(super) fn hit_test(&self, x: f32, y: f32, layout: &taffy::Layout) -> bool {
         let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
 
         if self.is_rrect() {
             // TODO
             false
         } else {
-            rect.contains(skia_safe::Point::new(x as _, y as _))
+            rect.contains(skia_safe::Point::new(x, y))
         }
     }
 

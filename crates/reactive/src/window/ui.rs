@@ -82,7 +82,7 @@ impl Ui {
             inner.draw_queued.set(false);
         }
         let mut tree = inner.tree.borrow_mut();
-        tree.update_layout();
+        tree.update();
         tree.draw(canvas);
     }
 

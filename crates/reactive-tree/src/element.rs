@@ -3,9 +3,11 @@ pub mod text;
 
 use core::pin::Pin;
 
+use nalgebra::Point3;
 use pin_project::pin_project;
 use reactive_event::EventTarget;
 use rect::Rect;
+use skia_safe::M44;
 use taffy::Style;
 use text::Text;
 use winit::event::WindowEvent;
@@ -15,7 +17,7 @@ use crate::{transform::Transform, tree::node::Node};
 #[derive(Debug)]
 #[pin_project]
 pub struct Element {
-    pub(crate) node: Node,
+    pub(super) node: Node,
 
     pub transform: Transform,
 
@@ -66,6 +68,10 @@ impl Element {
         self.project().node
     }
 
+    pub fn transform_mut(self: Pin<&mut Self>) -> &mut Transform {
+        self.project().transform
+    }
+
     pub fn rect_mut(self: Pin<&mut Self>) -> &mut Option<Rect> {
         self.project().rect
     }
@@ -90,22 +96,28 @@ impl Element {
         taffy::Size::zero()
     }
 
-    pub fn hit_test(&self, x: f64, y: f64) -> bool {
+    pub(super) fn hit_test(&self, x: f32, y: f32) -> bool {
         let Some(ref rect) = self.rect else {
             return false;
         };
+        let transformed = self.node.matrix().transform_point(&Point3::new(x, y, 0.0));
 
-        rect.hit_test(x, y, self.node.layout())
+        rect.hit_test(transformed.x, transformed.y, self.node.layout())
     }
 
-    pub(super) fn pre_child_draw(&self, canvas: &skia_safe::Canvas) {
+    pub(super) fn pre_draw(&self, canvas: &skia_safe::Canvas) {
         let layout = self.node.layout();
+        let matrix = self.node.matrix();
+        canvas.set_matrix(&M44::new(
+            matrix.m11, matrix.m21, matrix.m31, matrix.m41, matrix.m12, matrix.m22, matrix.m32,
+            matrix.m42, matrix.m13, matrix.m23, matrix.m33, matrix.m43, matrix.m14, matrix.m24,
+            matrix.m34, matrix.m44,
+        ));
         canvas.translate((layout.location.x, layout.location.y));
     }
 
-    pub(super) fn post_child_draw(&self, canvas: &skia_safe::Canvas) {
-        let layout = self.node.layout();
-        canvas.translate((-layout.location.x, -layout.location.y));
+    pub(super) fn post_draw(&self, canvas: &skia_safe::Canvas) {
+        canvas.reset_matrix();
     }
 
     pub fn draw(&self, canvas: &skia_safe::Canvas) {
@@ -120,7 +132,7 @@ impl Element {
 
     pub(super) fn dispatch_event(&self, event: &mut WindowEvent) {
         if let WindowEvent::CursorMoved { position, .. } = event {
-            if !self.hit_test(position.x, position.y) {
+            if !self.hit_test(position.x as _, position.y as _) {
                 return;
             }
 

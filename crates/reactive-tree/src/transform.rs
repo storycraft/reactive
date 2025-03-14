@@ -1,4 +1,4 @@
-use nalgebra::Vector3;
+use nalgebra::{Isometry3, Matrix4, Scale3, Vector3};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transform {
@@ -16,6 +16,11 @@ impl Transform {
             shear: Vector3::new(0.0, 0.0, 0.0),
             rotation: Vector3::new(0.0, 0.0, 0.0),
         }
+    }
+
+    pub(crate) fn to_matrix(&self) -> Matrix4<f32> {
+        Isometry3::new(self.translation, self.rotation).to_matrix()
+            * Scale3::from(self.scale).to_homogeneous()
     }
 }
 
