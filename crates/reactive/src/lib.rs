@@ -46,9 +46,14 @@ impl SetupFn for () {
     }
 }
 
+#[inline]
 pub fn div<F: SetupFn>(f: F) -> impl SetupFn<Output = F::Output> {
+    styled_div(Style::DEFAULT, f)
+}
+
+pub fn styled_div<F: SetupFn>(style: Style, f: F) -> impl SetupFn<Output = F::Output> {
     |ui: Ui| async move {
-        let id = ui.append(Element::new(Style::DEFAULT)).unwrap();
+        let id = ui.append(Element::new(style)).unwrap();
         defer!({
             _ = ui.remove(id);
         });
