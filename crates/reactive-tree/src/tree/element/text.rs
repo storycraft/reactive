@@ -17,9 +17,9 @@ impl Text {
         }
     }
 
-    pub fn draw(&self, canvas: &skia_safe::Canvas, layout: &taffy::Layout) {
+    pub fn draw(&self, canvas: &skia_safe::Canvas, height: f32) {
         if let Some(blob) = self.blob.as_ref() {
-            let origin = skia_safe::Point::new(0.0, layout.size.height);
+            let origin = skia_safe::Point::new(0.0, height);
             if !self.fill_paint.nothing_to_draw() {
                 canvas.draw_text_blob(blob, origin, &self.fill_paint);
             }

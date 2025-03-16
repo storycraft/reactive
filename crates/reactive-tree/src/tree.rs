@@ -1,3 +1,4 @@
+pub mod element;
 pub mod node;
 mod relation;
 pub mod split;
@@ -7,6 +8,7 @@ pub mod visitor;
 use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout};
+use element::Element;
 use nalgebra::Matrix4;
 use relation::Relation;
 use skia_safe::Canvas;
@@ -15,7 +17,7 @@ use split::{Elements, Relations};
 use visitor::{TreeVisitor, TreeVisitorMut};
 use winit::event::WindowEvent;
 
-use crate::{ElementId, element::Element, screen::ScreenRect};
+use crate::{ElementId, screen::ScreenRect};
 
 type ElementMap = SlotMap<ElementId, Pin<Box<Element>>>;
 type RelationMap = SecondaryMap<ElementId, Relation>;
@@ -204,15 +206,28 @@ impl UiTree {
     pub fn update(&mut self) {
         struct UpdateMatrix {
             matrix: Matrix4<f32>,
+            inverse_matrix: Matrix4<f32>,
         }
 
         impl TreeVisitorMut for UpdateMatrix {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let element = &mut elements[id];
+                let mut element = elements[id].as_mut();
                 let matrix = self.matrix * element.transform.to_matrix();
-                element.as_mut().node_mut().matrix = matrix;
+                let inverse_matrix = self.inverse_matrix * element.transform.to_inverse_matrix();
 
-                visitor::visit_mut(&mut Self { matrix }, id, elements, relations);
+                let node = element.as_mut().node_mut();
+                node.matrix = matrix;
+                node.inverse_matrix = inverse_matrix;
+
+                visitor::visit_mut(
+                    &mut Self {
+                        matrix,
+                        inverse_matrix,
+                    },
+                    id,
+                    elements,
+                    relations,
+                );
             }
         }
 
@@ -230,6 +245,7 @@ impl UiTree {
         let (mut elements, relations) = self.split();
         UpdateMatrix {
             matrix: Matrix4::identity(),
+            inverse_matrix: Matrix4::identity(),
         }
         .visit_mut(root, &mut elements, relations);
     }

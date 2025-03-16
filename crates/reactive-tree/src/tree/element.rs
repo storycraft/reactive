@@ -107,27 +107,31 @@ impl Element {
             0.0,
         ));
 
-        rect.hit_test(transformed.x, transformed.y, self.node.layout())
+        rect.hit_test(
+            layout.content_box_width(),
+            layout.content_box_height(),
+            transformed.x,
+            transformed.y,
+        )
     }
 
     pub(super) fn pre_draw(&self, canvas: &skia_safe::Canvas) {
-        let layout = self.node.layout();
         let matrix = self.node.matrix();
         canvas.set_matrix(&M44::new(
             matrix.m11, matrix.m21, matrix.m31, matrix.m41, matrix.m12, matrix.m22, matrix.m32,
             matrix.m42, matrix.m13, matrix.m23, matrix.m33, matrix.m43, matrix.m14, matrix.m24,
             matrix.m34, matrix.m44,
         ));
-        canvas.translate((layout.location.x, layout.location.y));
     }
 
     pub fn draw(&self, canvas: &skia_safe::Canvas) {
+        let size = self.node.layout().content_box_size();
         if let Some(ref rect) = self.rect {
-            rect.draw(canvas, self.node.layout());
+            rect.draw(canvas, size.width, size.height);
         }
 
         if let Some(ref text) = self.text {
-            text.draw(canvas, self.node.layout());
+            text.draw(canvas, size.height);
         }
     }
 

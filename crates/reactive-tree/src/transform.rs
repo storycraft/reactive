@@ -1,4 +1,4 @@
-use nalgebra::{Isometry3, Matrix4, Scale3, Vector3};
+use nalgebra::{Matrix4, Vector3};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transform {
@@ -19,8 +19,19 @@ impl Transform {
     }
 
     pub(crate) fn to_matrix(&self) -> Matrix4<f32> {
-        Isometry3::new(self.translation, self.rotation).to_matrix()
-            * Scale3::from(self.scale).to_homogeneous()
+        Matrix4::new_rotation(self.rotation)
+            * Matrix4::new_translation(&self.translation)
+            * Matrix4::new_nonuniform_scaling(&self.scale)
+    }
+
+    pub(crate) fn to_inverse_matrix(&self) -> Matrix4<f32> {
+        Matrix4::new_rotation(self.rotation)
+            * Matrix4::new_translation(&self.translation)
+            * Matrix4::new_nonuniform_scaling(&Vector3::new(
+                1.0 / self.scale.x,
+                1.0 / self.scale.y,
+                1.0 / self.scale.z,
+            ))
     }
 }
 

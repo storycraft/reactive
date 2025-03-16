@@ -21,9 +21,8 @@ impl Rect {
         !self.border_radius.iter().all(|radius| radius.is_zero())
     }
 
-    // TODO:: cleanup code
-    pub(super) fn hit_test(&self, x: f32, y: f32, layout: &taffy::Layout) -> bool {
-        let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
+    pub(super) fn hit_test(&self, width: f32, height: f32, x: f32, y: f32) -> bool {
+        let rect = skia_safe::Rect::new(0.0, 0.0, width, height);
 
         if self.is_rrect() {
             const NEARLY_ZERO: f32 = 1.0_f32 / (1 << 12) as f32;
@@ -40,8 +39,8 @@ impl Rect {
         }
     }
 
-    pub(super) fn draw(&self, canvas: &skia_safe::Canvas, layout: &taffy::Layout) {
-        let rect = skia_safe::Rect::new(0.0, 0.0, layout.size.width, layout.size.height);
+    pub(super) fn draw(&self, canvas: &skia_safe::Canvas, width: f32, height: f32) {
+        let rect = skia_safe::Rect::new(0.0, 0.0, width, height);
 
         let border_radius = &self.border_radius;
         let draw_rrect = self.is_rrect();

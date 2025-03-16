@@ -1,6 +1,5 @@
 pub mod dimension;
 pub mod draw;
-pub mod element;
 pub mod event;
 pub mod screen;
 pub mod transform;

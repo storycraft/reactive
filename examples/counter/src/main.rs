@@ -8,7 +8,7 @@ use reactive::{
     pin_ref, rotation_z,
     skia_safe::{Color4f, Paint, Point},
     styled_div,
-    taffy::{Size, Style},
+    taffy::{self, LengthPercentage, Size, Style},
     window::{UiWindow, ui::Ui},
     winit::event_loop::EventLoopBuilder,
 };
@@ -34,12 +34,17 @@ async fn main_win(ui: Ui) {
     styled_div(
         Style {
             size: Size::percent(0.3),
+            padding: taffy::Rect {
+                left: LengthPercentage::Length(50.0),
+                right: LengthPercentage::Length(50.0),
+                top: LengthPercentage::Length(50.0),
+                bottom: LengthPercentage::Length(50.0),
+            },
             ..Default::default()
         },
         async move |ui: Ui| {
             let test_listener = pin!(Listener::new(|_: &mut ()| {
                 counter.update(|prev| prev + 1);
-                rotation.update(|prev| prev + 0.01);
             }));
 
             let_effect!({
@@ -60,6 +65,10 @@ async fn main_win(ui: Ui) {
             join(
                 rotation_z(rotation).show(ui.clone()),
                 div(async move |ui: Ui| {
+                    let test_listener = pin!(Listener::new(|_: &mut ()| {
+                        rotation.update(|prev| prev + 0.01);
+                    }));
+
                     ui.with_style(|style| {
                         style.size = Size::percent(0.3);
                     });
@@ -70,6 +79,7 @@ async fn main_win(ui: Ui) {
                             rect.fill_paint = Paint::new(Color4f::new(1.0, 1.0, 0.0, 1.0), None);
                             rect
                         });
+                        el.as_ref().on_mouse_move().bind(test_listener);
                     });
 
                     let_effect!({

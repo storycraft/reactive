@@ -3,9 +3,9 @@ use core::{
     pin::Pin,
 };
 
-use crate::{ElementId, element::Element};
+use crate::ElementId;
 
-use super::{ElementMap, RelationMap};
+use super::{ElementMap, RelationMap, element::Element};
 
 #[derive(Debug)]
 pub struct Elements<'a>(pub(super) &'a mut ElementMap);
