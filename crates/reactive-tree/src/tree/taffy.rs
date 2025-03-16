@@ -38,11 +38,11 @@ impl taffy::LayoutPartialTree for UiTree {
         Self: 'a;
 
     fn get_core_container_style(&self, id: NodeId) -> Self::CoreContainerStyle<'_> {
-        &self.map[ElementId::from_taffy_id(id)].node.style
+        &self.elements[ElementId::from_taffy_id(id)].node.style
     }
 
     fn set_unrounded_layout(&mut self, id: NodeId, layout: &Layout) {
-        self.map[ElementId::from_taffy_id(id)]
+        self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
             .node_mut()
             .layout = *layout;
@@ -54,7 +54,7 @@ impl taffy::LayoutPartialTree for UiTree {
         inputs: taffy::tree::LayoutInput,
     ) -> taffy::tree::LayoutOutput {
         compute_cached_layout(self, node_id, inputs, |tree, id, inputs| {
-            let element = &tree.map[ElementId::from_taffy_id(id)];
+            let element = &tree.elements[ElementId::from_taffy_id(id)];
             let node = &element.node;
             let display_mode = node.style.display;
             let has_children = !tree.relations[ElementId::from_taffy_id(id)]
@@ -84,7 +84,7 @@ impl CacheTree for UiTree {
         available_space: Size<AvailableSpace>,
         run_mode: taffy::RunMode,
     ) -> Option<taffy::LayoutOutput> {
-        self.map[ElementId::from_taffy_id(id)].node.cache.get(
+        self.elements[ElementId::from_taffy_id(id)].node.cache.get(
             known_dimensions,
             available_space,
             run_mode,
@@ -99,16 +99,16 @@ impl CacheTree for UiTree {
         run_mode: taffy::RunMode,
         layout_output: taffy::LayoutOutput,
     ) {
-        self.get_mut(ElementId::from_taffy_id(id))
-            .unwrap()
+        self.elements[ElementId::from_taffy_id(id)]
+            .as_mut()
             .node_mut()
             .cache
             .store(known_dimensions, available_space, run_mode, layout_output)
     }
 
     fn cache_clear(&mut self, id: NodeId) {
-        self.get_mut(ElementId::from_taffy_id(id))
-            .unwrap()
+        self.elements[ElementId::from_taffy_id(id)]
+            .as_mut()
             .node_mut()
             .cache
             .clear();
@@ -127,7 +127,7 @@ impl taffy::LayoutFlexboxContainer for UiTree {
         Self: 'a;
 
     fn get_flexbox_container_style(&self, id: NodeId) -> Self::FlexboxContainerStyle<'_> {
-        &self.map[ElementId::from_taffy_id(id)].node.style
+        &self.elements[ElementId::from_taffy_id(id)].node.style
     }
 
     fn get_flexbox_child_style(&self, child_node_id: NodeId) -> Self::FlexboxItemStyle<'_> {
@@ -147,7 +147,7 @@ impl taffy::LayoutGridContainer for UiTree {
         Self: 'a;
 
     fn get_grid_container_style(&self, id: NodeId) -> Self::GridContainerStyle<'_> {
-        &self.map[ElementId::from_taffy_id(id)].node.style
+        &self.elements[ElementId::from_taffy_id(id)].node.style
     }
 
     fn get_grid_child_style(&self, child_node_id: NodeId) -> Self::GridItemStyle<'_> {
@@ -167,7 +167,7 @@ impl taffy::LayoutBlockContainer for UiTree {
         Self: 'a;
 
     fn get_block_container_style(&self, id: NodeId) -> Self::BlockContainerStyle<'_> {
-        &self.map[ElementId::from_taffy_id(id)].node.style
+        &self.elements[ElementId::from_taffy_id(id)].node.style
     }
 
     fn get_block_child_style(&self, child_node_id: NodeId) -> Self::BlockItemStyle<'_> {

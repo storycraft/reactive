@@ -2,6 +2,6 @@ use crate::ElementId;
 
 #[derive(Debug)]
 pub struct Relation {
-    pub parent: Option<ElementId>,
+    pub parent: ElementId,
     pub children: Vec<ElementId>,
 }

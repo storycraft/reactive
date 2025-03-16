@@ -1,14 +1,18 @@
+pub mod entry;
 pub mod node;
 mod relation;
 mod taffy;
+pub mod visitor;
 
 use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout};
+use entry::{Elements, Relations};
 use nalgebra::Matrix4;
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
+use visitor::{TreeVisitor, TreeVisitorMut};
 use winit::event::WindowEvent;
 
 use crate::{ElementId, element::Element, screen::ScreenRect};
@@ -18,7 +22,7 @@ type RelationMap = SecondaryMap<ElementId, Relation>;
 
 #[derive(Debug)]
 pub struct UiTree {
-    map: ElementMap,
+    elements: ElementMap,
     relations: RelationMap,
     pub screen: ScreenRect,
     root: ElementId,
@@ -36,39 +40,57 @@ impl UiTree {
         relations.insert(
             root,
             Relation {
-                parent: None,
+                parent: root,
                 children: Vec::new(),
             },
         );
 
         Self {
-            map,
+            elements: map,
             relations,
             screen: ScreenRect::ZERO,
             root,
         }
     }
 
+    #[inline]
     pub fn root(&self) -> ElementId {
         self.root
     }
 
-    pub fn append(&mut self, parent_id: ElementId, child: Pin<Box<Element>>) -> Option<ElementId> {
-        if !self.map.contains_key(parent_id) {
+    #[inline]
+    /// Split elements and relations for better lifetime utilization
+    pub fn split(&mut self) -> (Elements<'_>, Relations<'_>) {
+        (Elements(&mut self.elements), Relations(&self.relations))
+    }
+
+    pub fn append(&mut self, parent: ElementId, child: Pin<Box<Element>>) -> Option<ElementId> {
+        if !self.elements.contains_key(parent) {
             return None;
         }
 
-        let id = self.map.insert(child);
+        let id = self.elements.insert(child);
 
         self.relations.insert(
             id,
             Relation {
-                parent: Some(parent_id),
+                parent,
                 children: Vec::new(),
             },
         );
-        self.relations[parent_id].children.push(id);
+        self.relations[parent].children.push(id);
         Some(id)
+    }
+
+    fn remove_child_recursive(&mut self, id: ElementId) -> Option<(ElementId, Pin<Box<Element>>)> {
+        let element = self.elements.remove(id)?;
+        let mut relation = self.relations.remove(id).unwrap();
+
+        for child in relation.children.drain(..) {
+            self.remove_child_recursive(child);
+        }
+
+        Some((relation.parent, element))
     }
 
     pub fn remove(&mut self, id: ElementId) -> Option<Pin<Box<Element>>> {
@@ -76,49 +98,54 @@ impl UiTree {
             return None;
         }
 
-        let mut element = self.map.remove(id)?;
+        let (parent, mut element) = self.remove_child_recursive(id)?;
         element.as_mut().node_mut().cleanup();
-        let mut relation = self.relations.remove(id).unwrap();
-        for child in relation.children.drain(..) {
-            self.remove(child);
-        }
 
-        if let Some(parent_id) = relation.parent {
-            self.relations[parent_id]
-                .children
-                .retain(|child_id| *child_id != id);
-        }
+        self.relations[parent]
+            .children
+            .retain(|child_id| *child_id != id);
 
         Some(element)
     }
 
-    pub fn get(&self, id: ElementId) -> Option<Pin<&Element>> {
-        Some(self.map.get(id)?.as_ref())
+    #[inline]
+    pub fn get(&self, id: ElementId) -> Pin<&Element> {
+        self.elements[id].as_ref()
     }
 
-    pub fn get_mut(&mut self, id: ElementId) -> Option<Pin<&mut Element>> {
-        Some(self.map.get_mut(id)?.as_mut())
+    #[inline]
+    pub fn get_mut(&mut self, id: ElementId) -> Pin<&mut Element> {
+        self.elements[id].as_mut()
     }
 
+    #[inline]
+    pub fn try_get(&self, id: ElementId) -> Option<Pin<&Element>> {
+        Some(self.elements.get(id)?.as_ref())
+    }
+
+    #[inline]
+    pub fn try_get_mut(&mut self, id: ElementId) -> Option<Pin<&mut Element>> {
+        Some(self.elements.get_mut(id)?.as_mut())
+    }
+
+    #[inline]
     pub fn children(&self, id: ElementId) -> &[ElementId] {
-        if let Some(relation) = self.relations.get(id) {
-            &relation.children
-        } else {
-            &[]
-        }
+        Relations(&self.relations).children(id)
     }
 
-    pub fn parent(&self, id: ElementId) -> Option<ElementId> {
-        if let Some(relation) = self.relations.get(id) {
-            relation.parent
-        } else {
-            None
-        }
+    #[inline]
+    pub fn parent(&self, id: ElementId) -> ElementId {
+        Relations(&self.relations).parent(id)
+    }
+
+    #[inline]
+    pub fn try_parent(&self, id: ElementId) -> Option<ElementId> {
+        Relations(&self.relations).try_parent(id)
     }
 
     pub fn window_event(&self, event: &mut WindowEvent) {
         fn event_inner(tree: &UiTree, event: &mut WindowEvent, id: ElementId) {
-            let element = &tree.map[id];
+            let element = &tree.elements[id];
             element.dispatch_event(event);
             for child in &tree.relations[id].children {
                 event_inner(tree, event, *child);
@@ -129,45 +156,42 @@ impl UiTree {
     }
 
     pub fn draw(&self, canvas: &Canvas) {
-        fn draw_inner(tree: &UiTree, canvas: &Canvas, id: ElementId) {
-            let element = &tree.map[id];
-            element.pre_draw(canvas);
-            element.draw(canvas);
+        struct Draw<'a>(&'a Canvas);
+        impl TreeVisitor for Draw<'_> {
+            fn visit(&mut self, id: ElementId, tree: &UiTree) {
+                let element = &tree.elements[id];
+                element.pre_draw(self.0);
+                element.draw(self.0);
 
-            let children = &tree.relations[id].children;
-            if !children.is_empty() {
-                for child in children {
-                    draw_inner(tree, canvas, *child);
-                }
+                visitor::visit(self, id, tree);
             }
         }
 
-        draw_inner(self, canvas, self.root);
+        Draw(canvas).visit(self.root, &self);
         canvas.reset_matrix();
     }
 
     pub fn mark_dirty(&mut self, id: ElementId) {
-        fn clear_inner(elements: &mut ElementMap, relations: &RelationMap, id: ElementId) {
-            let Some(element) = elements.get_mut(id) else {
-                return;
-            };
-            element.as_mut().node_mut().cache.clear();
+        struct MarkDirty;
+        impl TreeVisitorMut for MarkDirty {
+            fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
+                elements[id].as_mut().node_mut().cache.clear();
 
-            for child in &relations[id].children {
-                clear_inner(elements, relations, *child);
+                visitor::visit_mut(self, id, elements, relations);
             }
         }
 
-        clear_inner(&mut self.map, &self.relations, id);
+        let (mut elements, relations) = self.split();
+        MarkDirty.visit_mut(id, &mut elements, relations);
     }
 
     pub fn style_mut(&mut self, id: ElementId) -> &mut Style {
         self.mark_dirty(id);
-        &mut self.map[id].as_mut().node_mut().style
+        &mut self.elements[id].as_mut().node_mut().style
     }
 
     pub fn set_style(&mut self, id: ElementId, style: Style) {
-        let Some(element) = self.map.get_mut(id) else {
+        let Some(element) = self.elements.get_mut(id) else {
             return;
         };
 
@@ -176,20 +200,17 @@ impl UiTree {
     }
 
     pub fn update(&mut self) {
-        fn update_matrix_inner(
-            elements: &mut ElementMap,
-            relations: &RelationMap,
-            parent_matrix: Matrix4<f32>,
-            id: ElementId,
-        ) {
-            let Some(element) = elements.get_mut(id) else {
-                return;
-            };
-            let matrix = parent_matrix * element.transform.to_matrix();
-            element.as_mut().node_mut().matrix = matrix;
+        struct UpdateMatrix {
+            matrix: Matrix4<f32>,
+        }
 
-            for &child in &relations[id].children {
-                update_matrix_inner(elements, relations, matrix, child);
+        impl TreeVisitorMut for UpdateMatrix {
+            fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
+                let element = &mut elements[id];
+                let matrix = self.matrix * element.transform.to_matrix();
+                element.as_mut().node_mut().matrix = matrix;
+
+                visitor::visit_mut(&mut Self { matrix }, id, elements, relations);
             }
         }
 
@@ -202,12 +223,13 @@ impl UiTree {
                 height: AvailableSpace::Definite(height),
             },
         );
-        update_matrix_inner(
-            &mut self.map,
-            &self.relations,
-            Matrix4::identity(),
-            self.root,
-        );
+
+        let root = self.root;
+        let (mut elements, relations) = self.split();
+        UpdateMatrix {
+            matrix: Matrix4::identity(),
+        }
+        .visit_mut(root, &mut elements, relations);
     }
 }
 

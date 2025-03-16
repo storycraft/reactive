@@ -130,11 +130,11 @@ impl Ui {
     }
 
     pub fn with_ref<R>(&self, f: impl FnOnce(Pin<&Element>) -> R) -> Option<R> {
-        Some(f(self.inner.tree.borrow().get(self.current)?))
+        Some(f(self.inner.tree.borrow().try_get(self.current)?))
     }
 
     pub fn with_mut<R>(&self, f: impl FnOnce(Pin<&mut Element>) -> R) -> Option<R> {
-        Some(f(self.inner.tree.borrow_mut().get_mut(self.current)?))
+        Some(f(self.inner.tree.borrow_mut().try_get_mut(self.current)?))
     }
 
     pub fn with_style<R>(&self, f: impl FnOnce(&mut Style) -> R) -> R {
