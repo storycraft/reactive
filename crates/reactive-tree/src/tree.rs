@@ -144,15 +144,17 @@ impl UiTree {
     }
 
     pub fn window_event(&self, event: &mut WindowEvent) {
-        fn event_inner(tree: &UiTree, event: &mut WindowEvent, id: ElementId) {
-            let element = &tree.elements[id];
-            element.dispatch_event(event);
-            for child in &tree.relations[id].children {
-                event_inner(tree, event, *child);
+        struct Visitor<'a>(&'a mut WindowEvent);
+        impl TreeVisitor for Visitor<'_> {
+            fn visit(&mut self, id: ElementId, tree: &UiTree) {
+                let element = &tree.elements[id];
+                element.dispatch_event(self.0);
+
+                visitor::visit(self, id, tree);
             }
         }
 
-        event_inner(self, event, self.root);
+        Visitor(event).visit(self.root, self);
     }
 
     pub fn draw(&self, canvas: &Canvas) {
