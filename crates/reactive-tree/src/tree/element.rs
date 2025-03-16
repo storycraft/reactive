@@ -41,7 +41,7 @@ pub struct Element {
 }
 
 impl Element {
-    pub fn new(style: Style) -> Self {
+    pub(super) fn new(style: Style) -> Self {
         Self {
             node: Node::new(style),
 

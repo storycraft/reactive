@@ -52,12 +52,7 @@ impl<'a> Relations<'a> {
     }
 
     #[inline]
-    pub fn parent(self, id: ElementId) -> ElementId {
-        self.0[id].parent
-    }
-
-    #[inline]
-    pub fn try_parent(self, id: ElementId) -> Option<ElementId> {
-        self.0.get(id).map(|relation| relation.parent)
+    pub fn parent(self, id: ElementId) -> Option<ElementId> {
+        self.0.get(id)?.parent
     }
 }

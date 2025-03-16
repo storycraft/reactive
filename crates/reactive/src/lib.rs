@@ -4,14 +4,13 @@ pub mod window;
 
 pub use ext::*;
 pub use reactive_event as event;
-pub use reactive_tree::{ElementId, element};
+pub use reactive_tree::{ElementId, tree::element};
 pub use reactivity_winit;
 pub use reactivity_winit::winit;
 pub use skia_safe;
 pub use taffy;
 
 use core::future::{Future, pending};
-use reactive_tree::element::Element;
 use scopeguard::defer;
 use taffy::Style;
 use window::ui::Ui;
@@ -53,9 +52,9 @@ pub fn div<F: SetupFn>(f: F) -> impl SetupFn<Output = F::Output> {
 
 pub fn styled_div<F: SetupFn>(style: Style, f: F) -> impl SetupFn<Output = F::Output> {
     |ui: Ui| async move {
-        let id = ui.append(Element::new(style)).unwrap();
+        let id = ui.append(style);
         defer!({
-            _ = ui.remove(id);
+            ui.remove(id);
         });
 
         f.show(ui.sub_ui(id)).await

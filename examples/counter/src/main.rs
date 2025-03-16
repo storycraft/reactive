@@ -45,6 +45,7 @@ async fn main_win(ui: Ui) {
         async move |ui: Ui| {
             let test_listener = pin!(Listener::new(|_: &mut ()| {
                 counter.update(|prev| prev + 1);
+                rotation.update(|prev| prev + 0.01);
             }));
 
             let_effect!({
@@ -65,10 +66,6 @@ async fn main_win(ui: Ui) {
             join(
                 rotation_z(rotation).show(ui.clone()),
                 div(async move |ui: Ui| {
-                    let test_listener = pin!(Listener::new(|_: &mut ()| {
-                        rotation.update(|prev| prev + 0.01);
-                    }));
-
                     ui.with_style(|style| {
                         style.size = Size::percent(0.3);
                     });
@@ -79,7 +76,6 @@ async fn main_win(ui: Ui) {
                             rect.fill_paint = Paint::new(Color4f::new(1.0, 1.0, 0.0, 1.0), None);
                             rect
                         });
-                        el.as_ref().on_mouse_move().bind(test_listener);
                     });
 
                     let_effect!({

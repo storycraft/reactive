@@ -41,10 +41,4 @@ impl Node {
     pub fn inverse_matrix(&self) -> &Matrix4<f32> {
         &self.inverse_matrix
     }
-
-    pub(super) fn cleanup(&mut self) {
-        self.layout = Layout::new();
-        self.matrix = Matrix4::identity();
-        self.inverse_matrix = Matrix4::identity();
-    }
 }

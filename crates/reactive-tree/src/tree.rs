@@ -32,8 +32,8 @@ pub struct UiTree {
 
 impl UiTree {
     pub fn new() -> Self {
-        let mut map = SlotMap::with_key();
-        let root = map.insert(Box::pin(Element::new(Style {
+        let mut elements = SlotMap::with_key();
+        let root = elements.insert(Box::pin(Element::new(Style {
             size: Size::from_percent(1.0, 1.0),
             ..Style::DEFAULT
         })));
@@ -42,13 +42,13 @@ impl UiTree {
         relations.insert(
             root,
             Relation {
-                parent: root,
+                parent: None,
                 children: Vec::new(),
             },
         );
 
         Self {
-            elements: map,
+            elements,
             relations,
             screen: ScreenRect::ZERO,
             root,
@@ -66,48 +66,58 @@ impl UiTree {
         (Elements(&mut self.elements), Relations(&self.relations))
     }
 
-    pub fn append(&mut self, parent: ElementId, child: Pin<Box<Element>>) -> Option<ElementId> {
-        if !self.elements.contains_key(parent) {
-            return None;
-        }
-
-        let id = self.elements.insert(child);
-
+    /// Create a element in the tree
+    pub fn create(&mut self, style: Style) -> ElementId {
+        let id = self.elements.insert(Box::pin(Element::new(style)));
         self.relations.insert(
             id,
             Relation {
-                parent,
+                parent: None,
                 children: Vec::new(),
             },
         );
-        self.relations[parent].children.push(id);
-        Some(id)
+
+        id
     }
 
-    fn remove_child_recursive(&mut self, id: ElementId) -> Option<(ElementId, Pin<Box<Element>>)> {
-        let element = self.elements.remove(id)?;
-        let mut relation = self.relations.remove(id).unwrap();
+    /// Append an element to parent
+    pub fn append_child(&mut self, parent: ElementId, child: ElementId) {
+        self.remove_child(child);
 
-        for child in relation.children.drain(..) {
-            self.remove_child_recursive(child);
+        if !self.relations.contains_key(parent) || !self.relations.contains_key(child) {
+            return;
         }
 
-        Some((relation.parent, element))
+        self.relations[parent].children.push(child);
+        self.relations[child].parent = Some(parent);
+        self.mark_dirty(parent);
     }
 
-    pub fn remove(&mut self, id: ElementId) -> Option<Pin<Box<Element>>> {
-        if id == self.root {
-            return None;
-        }
+    /// Remove an element from the parent
+    pub fn remove_child(&mut self, id: ElementId) {
+        let Some(relation) = self.relations.get_mut(id) else {
+            return;
+        };
 
-        let (parent, mut element) = self.remove_child_recursive(id)?;
-        element.as_mut().node_mut().cleanup();
+        let Some(parent) = relation.parent.take() else {
+            return;
+        };
 
         self.relations[parent]
             .children
             .retain(|child_id| *child_id != id);
+        self.mark_dirty(parent);
+    }
 
-        Some(element)
+    /// Completely remove a element from the tree except root element
+    pub fn destroy(&mut self, id: ElementId) {
+        if id == self.root {
+            return;
+        }
+
+        self.remove_child(id);
+        self.elements.remove(id);
+        self.relations.remove(id);
     }
 
     #[inline]
@@ -136,13 +146,8 @@ impl UiTree {
     }
 
     #[inline]
-    pub fn parent(&self, id: ElementId) -> ElementId {
+    pub fn parent(&self, id: ElementId) -> Option<ElementId> {
         Relations(&self.relations).parent(id)
-    }
-
-    #[inline]
-    pub fn try_parent(&self, id: ElementId) -> Option<ElementId> {
-        Relations(&self.relations).try_parent(id)
     }
 
     pub fn window_event(&self, event: &mut WindowEvent) {
@@ -179,7 +184,10 @@ impl UiTree {
         struct MarkDirty;
         impl TreeVisitorMut for MarkDirty {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                elements[id].as_mut().node_mut().cache.clear();
+                let Some(element) = elements.get_mut(id) else {
+                    return;
+                };
+                element.node_mut().cache.clear();
 
                 visitor::visit_mut(self, id, elements, relations);
             }

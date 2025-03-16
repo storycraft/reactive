@@ -5,7 +5,11 @@ use core::{
 use std::rc::Rc;
 
 use pin_project::pin_project;
-use reactive_tree::{ElementId, element::Element, screen::ScreenRect, tree::UiTree};
+use reactive_tree::{
+    ElementId,
+    screen::ScreenRect,
+    tree::{UiTree, element::Element},
+};
 use reactivity::effect::Binding;
 use reactivity_winit::{
     state::StateCell,
@@ -122,11 +126,13 @@ impl Ui {
         self.inner.as_ref().window().take()
     }
 
-    pub fn append(&self, element: Element) -> Option<ElementId> {
-        self.inner
-            .tree
-            .borrow_mut()
-            .append(self.current, Box::pin(element))
+    pub fn append(&self, style: Style) -> ElementId {
+        let mut tree = self.inner.tree.borrow_mut();
+
+        let id = tree.create(style);
+        tree.append_child(self.current, id);
+
+        id
     }
 
     pub fn with_ref<R>(&self, f: impl FnOnce(Pin<&Element>) -> R) -> Option<R> {
@@ -141,8 +147,8 @@ impl Ui {
         f(self.inner.tree.borrow_mut().style_mut(self.current))
     }
 
-    pub fn remove(&self, id: ElementId) -> Option<Pin<Box<Element>>> {
-        self.inner.tree.borrow_mut().remove(id)
+    pub fn remove(&self, id: ElementId) {
+        self.inner.tree.borrow_mut().destroy(id);
     }
 }
 
