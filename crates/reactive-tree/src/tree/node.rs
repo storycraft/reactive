@@ -2,6 +2,7 @@ use nalgebra::Matrix4;
 use taffy::{Cache, Layout, Style};
 
 #[derive(Debug)]
+/// Stores drawing informations
 pub struct Node {
     pub(super) style: Style,
     pub(super) cache: Cache,
