@@ -77,7 +77,7 @@ impl UiTree {
         }
 
         let mut element = self.map.remove(id)?;
-        element.as_mut().node_mut().cache.clear();
+        element.as_mut().node_mut().cleanup();
         let mut relation = self.relations.remove(id).unwrap();
         for child in relation.children.drain(..) {
             self.remove(child);

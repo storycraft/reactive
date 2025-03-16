@@ -33,4 +33,9 @@ impl Node {
     pub fn matrix(&self) -> &Matrix4<f32> {
         &self.matrix
     }
+
+    pub(super) fn cleanup(&mut self) {
+        self.layout = Layout::new();
+        self.matrix = Matrix4::identity();
+    }
 }
