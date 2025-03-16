@@ -203,7 +203,9 @@ impl UiTree {
                 };
                 element.node_mut().cache.clear();
 
-                visitor::visit_mut(self, id, elements, relations);
+                if let Some(id) = relations.parent(id) {
+                    self.visit_mut(id, elements, relations);
+                }
             }
         }
 
