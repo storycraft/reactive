@@ -100,7 +100,7 @@ impl UiTree {
         Some(self.map.get_mut(id)?.as_mut())
     }
 
-    pub fn children(&mut self, id: ElementId) -> &[ElementId] {
+    pub fn children(&self, id: ElementId) -> &[ElementId] {
         if let Some(relation) = self.relations.get(id) {
             &relation.children
         } else {
@@ -108,7 +108,7 @@ impl UiTree {
         }
     }
 
-    pub fn parent(&mut self, id: ElementId) -> Option<ElementId> {
+    pub fn parent(&self, id: ElementId) -> Option<ElementId> {
         if let Some(relation) = self.relations.get(id) {
             relation.parent
         } else {
