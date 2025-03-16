@@ -29,7 +29,7 @@ impl Rect {
             const NEARLY_ZERO: f32 = 1.0_f32 / (1 << 12) as f32;
             // https://github.com/google/skia/blob/f4467ff38f1f0495307b3fe8cf4a3f564c33f7f3/modules/sksg/src/SkSGRect.cpp#L64
             // wth
-            RRect::new_rect_radii(rect, &self.border_radius).contains(&skia_safe::Rect::new(
+            RRect::new_rect_radii(rect, &self.border_radius).contains(skia_safe::Rect::new(
                 x - NEARLY_ZERO,
                 y - NEARLY_ZERO,
                 x + NEARLY_ZERO,

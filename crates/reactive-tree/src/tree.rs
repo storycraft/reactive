@@ -1,17 +1,17 @@
-pub mod entry;
 pub mod node;
 mod relation;
+pub mod split;
 mod taffy;
 pub mod visitor;
 
 use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout};
-use entry::{Elements, Relations};
 use nalgebra::Matrix4;
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
+use split::{Elements, Relations};
 use visitor::{TreeVisitor, TreeVisitorMut};
 use winit::event::WindowEvent;
 
@@ -167,7 +167,7 @@ impl UiTree {
             }
         }
 
-        Draw(canvas).visit(self.root, &self);
+        Draw(canvas).visit(self.root, self);
         canvas.reset_matrix();
     }
 

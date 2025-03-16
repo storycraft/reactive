@@ -58,10 +58,6 @@ impl<'a> Relations<'a> {
 
     #[inline]
     pub fn try_parent(self, id: ElementId) -> Option<ElementId> {
-        if let Some(relation) = self.0.get(id) {
-            Some(relation.parent)
-        } else {
-            None
-        }
+        self.0.get(id).map(|relation| relation.parent)
     }
 }

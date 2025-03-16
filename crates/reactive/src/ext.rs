@@ -7,7 +7,7 @@ mod __private {
     pub trait Extract {
         type T;
     }
-    
+
     impl<F: FnOnce() -> T, T> Extract for F {
         type T = T;
     }

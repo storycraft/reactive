@@ -2,11 +2,11 @@ use crate::ElementId;
 
 use super::{
     UiTree,
-    entry::{Elements, Relations},
+    split::{Elements, Relations},
 };
 
 /// Visit immutable elements on tree
-/// 
+///
 /// Default implementation visit children recursively
 pub trait TreeVisitor {
     fn visit(&mut self, id: ElementId, tree: &UiTree) {
@@ -23,7 +23,7 @@ pub fn visit(this: &mut (impl TreeVisitor + ?Sized), id: ElementId, tree: &UiTre
 }
 
 /// Visit mutable elements on tree
-/// 
+///
 /// Default implementation visit children recursively
 pub trait TreeVisitorMut {
     fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
