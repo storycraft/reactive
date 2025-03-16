@@ -95,18 +95,32 @@ impl UiTree {
 
     /// Remove an element from the parent
     pub fn remove_child(&mut self, id: ElementId) {
-        let Some(relation) = self.relations.get_mut(id) else {
-            return;
+        struct Cleanup;
+        impl TreeVisitorMut for Cleanup {
+            fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
+                elements[id].as_mut().node_mut().cleanup();
+
+                visitor::visit_mut(self, id, elements, relations);
+            }
+        }
+
+        let parent = {
+            let Some(relation) = self.relations.get_mut(id) else {
+                return;
+            };
+
+            relation.parent.take()
         };
 
-        let Some(parent) = relation.parent.take() else {
-            return;
-        };
+        let (ref mut elements, relations) = self.split();
+        Cleanup.visit_mut(id, elements, relations);
 
-        self.relations[parent]
-            .children
-            .retain(|child_id| *child_id != id);
-        self.mark_dirty(parent);
+        if let Some(parent) = parent {
+            self.relations[parent]
+                .children
+                .retain(|child_id| *child_id != id);
+            self.mark_dirty(parent);
+        }
     }
 
     /// Completely remove a element from the tree except root element
