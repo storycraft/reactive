@@ -100,7 +100,12 @@ impl Element {
         let Some(ref rect) = self.rect else {
             return false;
         };
-        let transformed = self.node.matrix().transform_point(&Point3::new(x, y, 0.0));
+        let layout = self.node.layout();
+        let transformed = self.node.matrix().transform_point(&Point3::new(
+            x - layout.location.x,
+            y - layout.location.y,
+            0.0,
+        ));
 
         rect.hit_test(transformed.x, transformed.y, self.node.layout())
     }
