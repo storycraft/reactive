@@ -1,6 +1,9 @@
 use nalgebra::Matrix4;
 
-use crate::{tree::{visitor, TreeVisitorMut}, ElementId};
+use crate::{
+    ElementId,
+    tree::{TreeVisitorMut, visitor},
+};
 
 use super::split::{Elements, Relations};
 
@@ -17,6 +20,9 @@ pub fn update_matrix(id: ElementId, elements: &mut Elements, relations: Relation
             let inverse_matrix = self.inverse_matrix * element.transform.to_inverse_matrix();
 
             let node = element.as_mut().project().node;
+            if node.matrix_outdated {
+                node.matrix_outdated = false;
+            }
             node.matrix = matrix;
             node.inverse_matrix = inverse_matrix;
 

@@ -206,7 +206,7 @@ impl UiTree {
     #[inline]
     pub fn transform_mut(&mut self, id: ElementId) -> &mut Transform {
         let project = self.elements[id].as_mut().project();
-        project.node.invalidate_matrix();
+        project.node.matrix_outdated = true;
         project.transform
     }
 

@@ -52,10 +52,12 @@ pub fn div<F: SetupFn>(f: F) -> impl SetupFn<Output = F::Output> {
 
 pub fn styled_div<F: SetupFn>(style: Style, f: F) -> impl SetupFn<Output = F::Output> {
     |ui: Ui| async move {
-        let id = ui.append(style);
-        defer!({
-            ui.remove(id);
+        let id = ui.with_tree_mut(|tree| {
+            let id = tree.create(style);
+            tree.append_child(ui.current_id(), id);
+            id
         });
+        defer!(ui.with_tree_mut(|tree| tree.destroy(id)));
 
         f.show(ui.sub_ui(id)).await
     }

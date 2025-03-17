@@ -20,11 +20,15 @@ impl RoundTree for UiTree {
     }
 
     fn set_final_layout(&mut self, id: NodeId, layout: &Layout) {
-        self.elements[ElementId::from_taffy_id(id)]
+        let node = self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
             .project()
-            .node
-            .layout = *layout;
+            .node;
+
+        node.layout = *layout;
+        if !node.matrix_outdated {
+            node.matrix_outdated = true;
+        }
     }
 }
 

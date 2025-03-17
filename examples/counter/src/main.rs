@@ -2,7 +2,7 @@ use core::{future::pending, pin::pin};
 
 use futures::future::join;
 use reactive::{
-    SetupFn, div,
+    SetupFn,
     element::rect::Rect,
     event::Listener,
     pin_ref, rotation_z,
@@ -52,40 +52,41 @@ async fn main_win(ui: Ui) {
                 println!("counter updated to {}", counter.get($));
             });
 
-            ui.with_mut(|mut el| {
-                *el.as_mut().rect_mut() = Some({
+            ui.with_tree_mut(|tree| {
+                *tree.rect_mut(ui.current_id()) = Some({
                     let mut rect = Rect::new();
                     rect.fill_paint = Paint::new(Color4f::new(1.0, 1.0, 1.0, 1.0), None);
                     rect.border_radius = [Point::new(25.0, 25.0); 4];
 
                     rect
                 });
-                el.as_ref().on_mouse_move().bind(test_listener);
+                tree.get(ui.current_id())
+                    .as_ref()
+                    .on_mouse_move()
+                    .bind(test_listener);
             });
 
             join(
                 rotation_z(rotation).show(ui.clone()),
-                div(async move |ui: Ui| {
-                    ui.with_style(|style| {
-                        style.size = Size::percent(0.3);
-                    });
+                styled_div(
+                    Style {
+                        size: Size::percent(0.3),
+                        ..Default::default()
+                    },
+                    async move |ui: Ui| {
+                        ui.with_tree_mut(|tree| {
+                            *tree.rect_mut(ui.current_id()) = Some({
+                                let mut rect = Rect::new();
+                                rect.fill_paint =
+                                    Paint::new(Color4f::new(1.0, 1.0, 0.0, 1.0), None);
 
-                    ui.with_mut(|mut el| {
-                        *el.as_mut().rect_mut() = Some({
-                            let mut rect = Rect::new();
-                            rect.fill_paint = Paint::new(Color4f::new(1.0, 1.0, 0.0, 1.0), None);
-                            rect
+                                rect
+                            });
                         });
-                    });
 
-                    let_effect!({
-                        ui.with_mut(|mut el| {
-                            el.as_mut().transform_mut().rotation.z = rotation.get($);
-                        });
-                    });
-
-                    pending::<()>().await
-                })
+                        pending::<()>().await
+                    },
+                )
                 .show(ui.clone()),
             )
             .await

@@ -42,13 +42,6 @@ impl Node {
     }
 
     #[inline]
-    pub(super) fn invalidate_matrix(&mut self) {
-        if !self.matrix_outdated {
-            self.matrix_outdated = true;
-        }
-    }
-
-    #[inline]
     pub(super) fn cleanup(&mut self) {
         self.layout = Layout::new();
         self.matrix_outdated = true;

@@ -5,18 +5,13 @@ use core::{
 use std::rc::Rc;
 
 use pin_project::pin_project;
-use reactive_tree::{
-    ElementId,
-    screen::ScreenRect,
-    tree::{UiTree, element::Element},
-};
+use reactive_tree::{ElementId, screen::ScreenRect, tree::UiTree};
 use reactivity::effect::Binding;
 use reactivity_winit::{
     state::StateCell,
     winit::{event::WindowEvent, window::Window},
 };
 use scopeguard::guard;
-use taffy::Style;
 
 #[derive(Clone)]
 pub struct Ui {
@@ -47,6 +42,14 @@ impl Ui {
 
     pub fn current_id(&self) -> ElementId {
         self.current
+    }
+
+    pub fn with_tree<R>(&self, f: impl FnOnce(&UiTree) -> R) -> R {
+        f(&*self.inner.tree.borrow())
+    }
+
+    pub fn with_tree_mut<R>(&self, f: impl FnOnce(&mut UiTree) -> R) -> R {
+        f(&mut self.inner.tree.borrow_mut())
     }
 
     #[must_use]
@@ -124,31 +127,6 @@ impl Ui {
 
     pub fn close(&self) -> Option<Window> {
         self.inner.as_ref().window().take()
-    }
-
-    pub fn append(&self, style: Style) -> ElementId {
-        let mut tree = self.inner.tree.borrow_mut();
-
-        let id = tree.create(style);
-        tree.append_child(self.current, id);
-
-        id
-    }
-
-    pub fn with_ref<R>(&self, f: impl FnOnce(Pin<&Element>) -> R) -> Option<R> {
-        Some(f(self.inner.tree.borrow().try_get(self.current)?))
-    }
-
-    pub fn with_mut<R>(&self, f: impl FnOnce(Pin<&mut Element>) -> R) -> Option<R> {
-        Some(f(self.inner.tree.borrow_mut().try_get_mut(self.current)?))
-    }
-
-    pub fn with_style<R>(&self, f: impl FnOnce(&mut Style) -> R) -> R {
-        f(self.inner.tree.borrow_mut().style_mut(self.current))
-    }
-
-    pub fn remove(&self, id: ElementId) {
-        self.inner.tree.borrow_mut().destroy(id);
     }
 }
 

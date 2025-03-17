@@ -15,21 +15,14 @@ mod __private {
 
 type Never = <fn() -> ! as __private::Extract>::T;
 
-macro_rules! wired {
-    ($ty:ty, $name:ident, $expr:expr) => {
-        pub fn $name($name: Pin<&StateCell<$ty>>) -> impl SetupFn<Output = Never> {
-            async move |ui: Ui| {
-                let_effect!({
-                    ui.with_mut(|mut el| {
-                        el.as_mut().$expr = $name.get($);
-                    });
-                    ui.request_redraw();
-                });
-
-                pending().await
-            }
-        }
-    };
+pub fn rotation_z(rotation_z:Pin<&StateCell<f32>>) -> impl SetupFn<Output = Never>{
+    async move|ui:Ui|{
+        let_effect!({
+            ui.with_tree_mut(|tree|{
+                tree.transform_mut(ui.current_id()).rotation.z = rotation_z.get($);
+            });
+            ui.request_redraw();
+        });
+        pending().await
+    }
 }
-
-wired!(f32, rotation_z, transform_mut().rotation.z);
