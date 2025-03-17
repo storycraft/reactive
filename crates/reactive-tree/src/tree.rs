@@ -1,3 +1,4 @@
+pub mod action;
 pub mod element;
 pub mod node;
 pub mod pass;
@@ -9,7 +10,7 @@ mod visitor;
 use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout, round_layout};
-use element::{Element, rect::Rect, text::Text};
+use element::Element;
 use pass::{cleanup, update};
 use relation::Relation;
 use skia_safe::Canvas;
@@ -18,7 +19,7 @@ use split::{Elements, Relations};
 use visitor::{TreeVisitor, TreeVisitorMut};
 use winit::event::WindowEvent;
 
-use crate::{ElementId, screen::ScreenRect, transform::Transform};
+use crate::{ElementId, screen::ScreenRect};
 
 type ElementMap = SlotMap<ElementId, Pin<Box<Element>>>;
 type RelationMap = SecondaryMap<ElementId, Relation>;
@@ -185,29 +186,6 @@ impl UiTree {
 
         let (mut elements, relations) = self.split();
         MarkDirty.visit_mut(id, &mut elements, relations);
-    }
-
-    #[inline]
-    pub fn style_mut(&mut self, id: ElementId) -> &mut Style {
-        self.mark_dirty(id);
-        &mut self.elements[id].as_mut().project().node.style
-    }
-
-    #[inline]
-    pub fn transform_mut(&mut self, id: ElementId) -> &mut Transform {
-        let project = self.elements[id].as_mut().project();
-        project.node.matrix_outdated = true;
-        project.transform
-    }
-
-    #[inline]
-    pub fn rect_mut(&mut self, id: ElementId) -> &mut Option<Rect> {
-        self.elements[id].as_mut().project().rect
-    }
-
-    #[inline]
-    pub fn text_mut(&mut self, id: ElementId) -> &mut Option<Text> {
-        self.elements[id].as_mut().project().text
     }
 
     pub fn update(&mut self) {

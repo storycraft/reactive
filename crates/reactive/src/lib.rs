@@ -4,7 +4,7 @@ pub mod window;
 
 pub use ext::*;
 pub use reactive_event as event;
-pub use reactive_tree::{ElementId, tree::element};
+pub use reactive_tree::{ElementId, tree};
 pub use reactivity_winit;
 pub use reactivity_winit::winit;
 pub use skia_safe;
