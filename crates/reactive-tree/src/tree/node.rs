@@ -4,8 +4,9 @@ use taffy::{Cache, Layout, Style};
 #[derive(Debug)]
 /// Stores drawing informations
 pub struct Node {
-    pub(super) style: Style,
+    pub style: Style,
     pub(super) cache: Cache,
+    pub(super) matrix_outdated: bool,
     pub(super) matrix: Matrix4<f32>,
     pub(super) inverse_matrix: Matrix4<f32>,
     pub(super) unround_layout: Layout,
@@ -17,6 +18,7 @@ impl Node {
         Self {
             style,
             cache: Cache::new(),
+            matrix_outdated: true,
             matrix: Matrix4::identity(),
             inverse_matrix: Matrix4::identity(),
             unround_layout: Layout::new(),
@@ -40,11 +42,15 @@ impl Node {
     }
 
     #[inline]
-    pub fn inverse_matrix(&self) -> &Matrix4<f32> {
-        &self.inverse_matrix
+    pub(super) fn invalidate_matrix(&mut self) {
+        if !self.matrix_outdated {
+            self.matrix_outdated = true;
+        }
     }
 
+    #[inline]
     pub(super) fn cleanup(&mut self) {
         self.layout = Layout::new();
+        self.matrix_outdated = true;
     }
 }

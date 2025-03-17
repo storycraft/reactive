@@ -25,7 +25,7 @@ pub fn visit(this: &mut (impl TreeVisitor + ?Sized), id: ElementId, tree: &UiTre
 /// Visit mutable elements on tree
 ///
 /// Default implementation visit children recursively
-pub trait TreeVisitorMut {
+pub(super) trait TreeVisitorMut {
     fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
         visit_mut(self, id, elements, relations);
     }

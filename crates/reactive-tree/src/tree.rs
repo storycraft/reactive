@@ -1,15 +1,16 @@
 pub mod element;
 pub mod node;
+pub mod pass;
 mod relation;
-pub mod split;
+mod split;
 mod taffy;
-pub mod visitor;
+mod visitor;
 
 use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout, round_layout};
-use element::Element;
-use nalgebra::Matrix4;
+use element::{Element, rect::Rect, text::Text};
+use pass::update_matrix;
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
@@ -17,7 +18,7 @@ use split::{Elements, Relations};
 use visitor::{TreeVisitor, TreeVisitorMut};
 use winit::event::WindowEvent;
 
-use crate::{ElementId, screen::ScreenRect};
+use crate::{ElementId, screen::ScreenRect, transform::Transform};
 
 type ElementMap = SlotMap<ElementId, Pin<Box<Element>>>;
 type RelationMap = SecondaryMap<ElementId, Relation>;
@@ -62,7 +63,7 @@ impl UiTree {
 
     #[inline]
     /// Split elements and relations for better lifetime utilization
-    pub fn split(&mut self) -> (Elements<'_>, Relations<'_>) {
+    fn split(&mut self) -> (Elements<'_>, Relations<'_>) {
         (Elements(&mut self.elements), Relations(&self.relations))
     }
 
@@ -98,11 +99,11 @@ impl UiTree {
         struct Cleanup;
         impl TreeVisitorMut for Cleanup {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let Some(element) = elements.try_get_mut(id) else {
+                let Some(element) = elements.get_mut(id) else {
                     return;
                 };
 
-                element.node_mut().cleanup();
+                element.project().node.cleanup();
                 visitor::visit_mut(self, id, elements, relations);
             }
         }
@@ -136,18 +137,8 @@ impl UiTree {
     }
 
     #[inline]
-    pub fn get_mut(&mut self, id: ElementId) -> Pin<&mut Element> {
-        self.elements[id].as_mut()
-    }
-
-    #[inline]
     pub fn try_get(&self, id: ElementId) -> Option<Pin<&Element>> {
         Some(self.elements.get(id)?.as_ref())
-    }
-
-    #[inline]
-    pub fn try_get_mut(&mut self, id: ElementId) -> Option<Pin<&mut Element>> {
-        Some(self.elements.get_mut(id)?.as_mut())
     }
 
     #[inline]
@@ -194,10 +185,7 @@ impl UiTree {
         struct MarkDirty;
         impl TreeVisitorMut for MarkDirty {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let Some(element) = elements.try_get_mut(id) else {
-                    return;
-                };
-                element.node_mut().cache.clear();
+                elements[id].as_mut().project().node.cache.clear();
 
                 if let Some(id) = relations.parent(id) {
                     self.visit_mut(id, elements, relations);
@@ -209,45 +197,41 @@ impl UiTree {
         MarkDirty.visit_mut(id, &mut elements, relations);
     }
 
+    #[inline]
     pub fn style_mut(&mut self, id: ElementId) -> &mut Style {
         self.mark_dirty(id);
-        &mut self.elements[id].as_mut().node_mut().style
+        &mut self.elements[id].as_mut().project().node.style
     }
 
-    pub fn set_style(&mut self, id: ElementId, style: Style) {
-        let Some(element) = self.elements.get_mut(id) else {
-            return;
-        };
+    #[inline]
+    pub fn transform_mut(&mut self, id: ElementId) -> &mut Transform {
+        let project = self.elements[id].as_mut().project();
+        project.node.invalidate_matrix();
+        project.transform
+    }
 
-        element.as_mut().node_mut().style = style;
-        self.mark_dirty(id);
+    #[inline]
+    pub fn rect_mut(&mut self, id: ElementId) -> &mut Option<Rect> {
+        self.elements[id].as_mut().project().rect
+    }
+
+    #[inline]
+    pub fn text_mut(&mut self, id: ElementId) -> &mut Option<Text> {
+        self.elements[id].as_mut().project().text
     }
 
     pub fn update(&mut self) {
-        struct UpdateMatrix {
-            matrix: Matrix4<f32>,
-            inverse_matrix: Matrix4<f32>,
-        }
+        struct Update;
 
-        impl TreeVisitorMut for UpdateMatrix {
+        impl TreeVisitorMut for Update {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let mut element = elements.get_mut(id);
-                let matrix = self.matrix * element.transform.to_matrix();
-                let inverse_matrix = self.inverse_matrix * element.transform.to_inverse_matrix();
+                let element = elements[id].as_mut();
 
-                let node = element.as_mut().node_mut();
-                node.matrix = matrix;
-                node.inverse_matrix = inverse_matrix;
+                if element.node.matrix_outdated {
+                    update_matrix(id, elements, relations);
+                }
 
-                visitor::visit_mut(
-                    &mut Self {
-                        matrix,
-                        inverse_matrix,
-                    },
-                    id,
-                    elements,
-                    relations,
-                );
+                visitor::visit_mut(self, id, elements, relations);
             }
         }
 
@@ -264,11 +248,7 @@ impl UiTree {
 
         let root = self.root;
         let (mut elements, relations) = self.split();
-        UpdateMatrix {
-            matrix: Matrix4::identity(),
-            inverse_matrix: Matrix4::identity(),
-        }
-        .visit_mut(root, &mut elements, relations);
+        Update.visit_mut(root, &mut elements, relations);
     }
 }
 

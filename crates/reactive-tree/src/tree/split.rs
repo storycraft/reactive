@@ -1,4 +1,7 @@
-use core::pin::Pin;
+use core::{
+    ops::{Index, IndexMut},
+    pin::Pin,
+};
 
 use crate::ElementId;
 
@@ -9,23 +12,22 @@ pub struct Elements<'a>(pub(super) &'a mut ElementMap);
 
 impl Elements<'_> {
     #[inline]
-    pub fn get(&self, id: ElementId) -> Pin<&Element> {
-        self.0[id].as_ref()
-    }
-
-    #[inline]
-    pub fn try_get(&self, id: ElementId) -> Option<Pin<&Element>> {
-        Some(self.0.get(id)?.as_ref())
-    }
-
-    #[inline]
-    pub fn get_mut(&mut self, id: ElementId) -> Pin<&mut Element> {
-        self.0[id].as_mut()
-    }
-
-    #[inline]
-    pub fn try_get_mut(&mut self, id: ElementId) -> Option<Pin<&mut Element>> {
+    pub fn get_mut(&mut self, id: ElementId) -> Option<Pin<&mut Element>> {
         Some(self.0.get_mut(id)?.as_mut())
+    }
+}
+
+impl Index<ElementId> for Elements<'_> {
+    type Output = Pin<Box<Element>>;
+
+    fn index(&self, index: ElementId) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl IndexMut<ElementId> for Elements<'_> {
+    fn index_mut(&mut self, index: ElementId) -> &mut Self::Output {
+        &mut self.0[index]
     }
 }
 

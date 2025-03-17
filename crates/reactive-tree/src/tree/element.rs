@@ -15,9 +15,9 @@ use winit::event::WindowEvent;
 use crate::{transform::Transform, tree::node::Node};
 
 #[derive(Debug)]
-#[pin_project]
+#[pin_project(project_ref = ElementPinRef, project = ElementPinMut)]
 pub struct Element {
-    pub(super) node: Node,
+    pub node: Node,
 
     pub transform: Transform,
 
@@ -62,22 +62,6 @@ impl Element {
 
     pub fn node(&self) -> &Node {
         &self.node
-    }
-
-    pub fn node_mut(self: Pin<&mut Self>) -> &mut Node {
-        self.project().node
-    }
-
-    pub fn transform_mut(self: Pin<&mut Self>) -> &mut Transform {
-        self.project().transform
-    }
-
-    pub fn rect_mut(self: Pin<&mut Self>) -> &mut Option<Rect> {
-        self.project().rect
-    }
-
-    pub fn text_mut(self: Pin<&mut Self>) -> &mut Option<Text> {
-        self.project().text
     }
 
     pub fn on_mouse_move(self: Pin<&Self>) -> Pin<&EventTarget!(&mut ())> {

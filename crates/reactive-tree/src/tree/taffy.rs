@@ -22,7 +22,8 @@ impl RoundTree for UiTree {
     fn set_final_layout(&mut self, id: NodeId, layout: &Layout) {
         self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
-            .node_mut()
+            .project()
+            .node
             .layout = *layout;
     }
 }
@@ -60,7 +61,8 @@ impl LayoutPartialTree for UiTree {
     fn set_unrounded_layout(&mut self, id: NodeId, layout: &Layout) {
         self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
-            .node_mut()
+            .project()
+            .node
             .unround_layout = *layout;
     }
 
@@ -113,7 +115,8 @@ impl CacheTree for UiTree {
     ) {
         self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
-            .node_mut()
+            .project()
+            .node
             .cache
             .store(known_dimensions, available_space, run_mode, layout_output)
     }
@@ -121,7 +124,8 @@ impl CacheTree for UiTree {
     fn cache_clear(&mut self, id: NodeId) {
         self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
-            .node_mut()
+            .project()
+            .node
             .cache
             .clear();
     }
