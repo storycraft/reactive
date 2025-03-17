@@ -85,10 +85,6 @@ impl UiTree {
     pub fn append_child(&mut self, parent: ElementId, child: ElementId) {
         self.remove_child(child);
 
-        if !self.relations.contains_key(parent) || !self.relations.contains_key(child) {
-            return;
-        }
-
         self.relations[parent].children.push(child);
         self.relations[child].parent = Some(parent);
         self.mark_dirty(child);
@@ -97,8 +93,8 @@ impl UiTree {
     /// Remove an element from the parent
     pub fn remove_child(&mut self, id: ElementId) {
         let parent = self.parent(id).take();
-        let (ref mut elements, relations) = self.split();
-        cleanup(id, elements, relations);
+        let (mut elements, relations) = self.split();
+        cleanup(id, &mut elements, relations);
 
         if let Some(parent) = parent {
             self.relations[parent]
