@@ -15,8 +15,8 @@ mod __private {
 
 type Never = <fn() -> ! as __private::Extract>::T;
 
-pub fn rotation_z(rotation_z:Pin<&StateCell<f32>>) -> impl SetupFn<Output = Never>{
-    async move|ui:Ui|{
+pub fn rotation_z(rotation_z: Pin<&StateCell<f32>>) -> impl SetupFn<Output = Never> {
+    async move |ui: Ui| {
         let_effect!({
             ui.with_tree_mut(|tree|{
                 tree.transform_mut(ui.current_id()).rotation.z = rotation_z.get($);

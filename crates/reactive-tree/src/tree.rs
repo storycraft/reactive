@@ -10,7 +10,7 @@ use core::pin::Pin;
 
 use ::taffy::{AvailableSpace, Size, Style, compute_root_layout, round_layout};
 use element::{Element, rect::Rect, text::Text};
-use pass::update_matrix;
+use pass::{cleanup, update};
 use relation::Relation;
 use skia_safe::Canvas;
 use slotmap::{SecondaryMap, SlotMap};
@@ -96,21 +96,9 @@ impl UiTree {
 
     /// Remove an element from the parent
     pub fn remove_child(&mut self, id: ElementId) {
-        struct Cleanup;
-        impl TreeVisitorMut for Cleanup {
-            fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let Some(element) = elements.get_mut(id) else {
-                    return;
-                };
-
-                element.project().node.cleanup();
-                visitor::visit_mut(self, id, elements, relations);
-            }
-        }
-
         let parent = self.parent(id).take();
         let (ref mut elements, relations) = self.split();
-        Cleanup.visit_mut(id, elements, relations);
+        cleanup(id, elements, relations);
 
         if let Some(parent) = parent {
             self.relations[parent]
@@ -221,20 +209,6 @@ impl UiTree {
     }
 
     pub fn update(&mut self) {
-        struct Update;
-
-        impl TreeVisitorMut for Update {
-            fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let element = elements[id].as_mut();
-
-                if element.node.matrix_outdated {
-                    update_matrix(id, elements, relations);
-                }
-
-                visitor::visit_mut(self, id, elements, relations);
-            }
-        }
-
         let (width, height) = self.screen.logical_size();
         compute_root_layout(
             self,
@@ -248,7 +222,7 @@ impl UiTree {
 
         let root = self.root;
         let (mut elements, relations) = self.split();
-        Update.visit_mut(root, &mut elements, relations);
+        update(root, &mut elements, relations);
     }
 }
 

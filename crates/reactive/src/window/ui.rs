@@ -45,7 +45,7 @@ impl Ui {
     }
 
     pub fn with_tree<R>(&self, f: impl FnOnce(&UiTree) -> R) -> R {
-        f(&*self.inner.tree.borrow())
+        f(&self.inner.tree.borrow())
     }
 
     pub fn with_tree_mut<R>(&self, f: impl FnOnce(&mut UiTree) -> R) -> R {

@@ -7,7 +7,25 @@ use crate::{
 
 use super::split::{Elements, Relations};
 
-pub fn update_matrix(id: ElementId, elements: &mut Elements, relations: Relations) {
+pub fn update(id: ElementId, elements: &mut Elements, relations: Relations) {
+    struct Update;
+
+    impl TreeVisitorMut for Update {
+        fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
+            let element = elements[id].as_mut();
+
+            if element.node.matrix_outdated {
+                update_matrix(id, elements, relations);
+            }
+
+            visitor::visit_mut(self, id, elements, relations);
+        }
+    }
+
+    Update.visit_mut(id, elements, relations);
+}
+
+fn update_matrix(id: ElementId, elements: &mut Elements, relations: Relations) {
     pub struct UpdateMatrix {
         matrix: Matrix4<f32>,
         inverse_matrix: Matrix4<f32>,
@@ -52,4 +70,20 @@ pub fn update_matrix(id: ElementId, elements: &mut Elements, relations: Relation
     };
 
     update.visit_mut(id, elements, relations);
+}
+
+pub fn cleanup(id: ElementId, elements: &mut Elements, relations: Relations) {
+    struct Cleanup;
+    impl TreeVisitorMut for Cleanup {
+        fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
+            let Some(element) = elements.get_mut(id) else {
+                return;
+            };
+
+            element.project().node.cleanup();
+            visitor::visit_mut(self, id, elements, relations);
+        }
+    }
+
+    Cleanup.visit_mut(id, elements, relations);
 }
