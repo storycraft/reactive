@@ -145,9 +145,3 @@ impl Element {
         }
     }
 }
-
-impl Default for Element {
-    fn default() -> Self {
-        Self::new(Style::DEFAULT)
-    }
-}
