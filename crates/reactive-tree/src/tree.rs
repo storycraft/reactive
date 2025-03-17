@@ -81,6 +81,12 @@ impl UiTree {
         id
     }
 
+    #[inline]
+    /// Check if id is valid for this tree
+    pub fn contains(&self, id: ElementId) -> bool {
+        self.elements.contains_key(id)
+    }
+
     /// Append an element to parent
     pub fn append_child(&mut self, parent: ElementId, child: ElementId) {
         self.remove_child(child);
