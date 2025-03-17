@@ -90,7 +90,7 @@ impl UiTree {
 
         self.relations[parent].children.push(child);
         self.relations[child].parent = Some(parent);
-        self.mark_dirty(parent);
+        self.mark_dirty(child);
     }
 
     /// Remove an element from the parent

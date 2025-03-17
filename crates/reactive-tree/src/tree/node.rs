@@ -43,9 +43,6 @@ impl Node {
     }
 
     pub(super) fn cleanup(&mut self) {
-        self.cache.clear();
         self.layout = Layout::new();
-        self.matrix = Matrix4::identity();
-        self.inverse_matrix = Matrix4::identity();
     }
 }
