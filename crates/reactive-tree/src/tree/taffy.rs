@@ -2,18 +2,34 @@ mod iter;
 
 use iter::Iter;
 use taffy::{
-    AvailableSpace, CacheTree, Display, Layout, NodeId, Size, Style, compute_block_layout,
-    compute_cached_layout, compute_flexbox_layout, compute_grid_layout, compute_hidden_layout,
-    compute_leaf_layout,
+    AvailableSpace, CacheTree, Display, Layout, LayoutBlockContainer, LayoutFlexboxContainer,
+    LayoutGridContainer, LayoutInput, LayoutOutput, LayoutPartialTree, NodeId, RoundTree, RunMode,
+    Size, Style, TraversePartialTree, TraverseTree, compute_block_layout, compute_cached_layout,
+    compute_flexbox_layout, compute_grid_layout, compute_hidden_layout, compute_leaf_layout,
 };
 
 use crate::ElementId;
 
 use super::UiTree;
 
-impl taffy::TraverseTree for UiTree {}
+impl RoundTree for UiTree {
+    fn get_unrounded_layout(&self, id: NodeId) -> &Layout {
+        &self.elements[ElementId::from_taffy_id(id)]
+            .node
+            .unround_layout
+    }
 
-impl taffy::TraversePartialTree for UiTree {
+    fn set_final_layout(&mut self, id: NodeId, layout: &Layout) {
+        self.elements[ElementId::from_taffy_id(id)]
+            .as_mut()
+            .node_mut()
+            .layout = *layout;
+    }
+}
+
+impl TraverseTree for UiTree {}
+
+impl TraversePartialTree for UiTree {
     type ChildIter<'a> = Iter<'a>;
 
     fn child_ids(&self, id: NodeId) -> Self::ChildIter<'_> {
@@ -31,7 +47,7 @@ impl taffy::TraversePartialTree for UiTree {
     }
 }
 
-impl taffy::LayoutPartialTree for UiTree {
+impl LayoutPartialTree for UiTree {
     type CoreContainerStyle<'a>
         = &'a Style
     where
@@ -45,14 +61,10 @@ impl taffy::LayoutPartialTree for UiTree {
         self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
             .node_mut()
-            .layout = *layout;
+            .unround_layout = *layout;
     }
 
-    fn compute_child_layout(
-        &mut self,
-        node_id: NodeId,
-        inputs: taffy::tree::LayoutInput,
-    ) -> taffy::tree::LayoutOutput {
+    fn compute_child_layout(&mut self, node_id: NodeId, inputs: LayoutInput) -> LayoutOutput {
         compute_cached_layout(self, node_id, inputs, |tree, id, inputs| {
             let element = &tree.elements[ElementId::from_taffy_id(id)];
             let node = &element.node;
@@ -82,8 +94,8 @@ impl CacheTree for UiTree {
         id: NodeId,
         known_dimensions: Size<Option<f32>>,
         available_space: Size<AvailableSpace>,
-        run_mode: taffy::RunMode,
-    ) -> Option<taffy::LayoutOutput> {
+        run_mode: RunMode,
+    ) -> Option<LayoutOutput> {
         self.elements[ElementId::from_taffy_id(id)].node.cache.get(
             known_dimensions,
             available_space,
@@ -96,8 +108,8 @@ impl CacheTree for UiTree {
         id: NodeId,
         known_dimensions: Size<Option<f32>>,
         available_space: Size<AvailableSpace>,
-        run_mode: taffy::RunMode,
-        layout_output: taffy::LayoutOutput,
+        run_mode: RunMode,
+        layout_output: LayoutOutput,
     ) {
         self.elements[ElementId::from_taffy_id(id)]
             .as_mut()
@@ -115,7 +127,7 @@ impl CacheTree for UiTree {
     }
 }
 
-impl taffy::LayoutFlexboxContainer for UiTree {
+impl LayoutFlexboxContainer for UiTree {
     type FlexboxContainerStyle<'a>
         = &'a Style
     where
@@ -135,7 +147,7 @@ impl taffy::LayoutFlexboxContainer for UiTree {
     }
 }
 
-impl taffy::LayoutGridContainer for UiTree {
+impl LayoutGridContainer for UiTree {
     type GridContainerStyle<'a>
         = &'a Style
     where
@@ -155,7 +167,7 @@ impl taffy::LayoutGridContainer for UiTree {
     }
 }
 
-impl taffy::LayoutBlockContainer for UiTree {
+impl LayoutBlockContainer for UiTree {
     type BlockContainerStyle<'a>
         = &'a Style
     where

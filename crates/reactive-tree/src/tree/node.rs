@@ -8,6 +8,7 @@ pub struct Node {
     pub(super) cache: Cache,
     pub(super) matrix: Matrix4<f32>,
     pub(super) inverse_matrix: Matrix4<f32>,
+    pub(super) unround_layout: Layout,
     pub(super) layout: Layout,
 }
 
@@ -18,6 +19,7 @@ impl Node {
             cache: Cache::new(),
             matrix: Matrix4::identity(),
             inverse_matrix: Matrix4::identity(),
+            unround_layout: Layout::new(),
             layout: Layout::new(),
         }
     }

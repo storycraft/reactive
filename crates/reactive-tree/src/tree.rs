@@ -7,7 +7,7 @@ pub mod visitor;
 
 use core::pin::Pin;
 
-use ::taffy::{AvailableSpace, Size, Style, compute_root_layout};
+use ::taffy::{AvailableSpace, Size, Style, compute_root_layout, round_layout};
 use element::Element;
 use nalgebra::Matrix4;
 use relation::Relation;
@@ -260,6 +260,7 @@ impl UiTree {
                 height: AvailableSpace::Definite(height),
             },
         );
+        round_layout(self, self.root.to_taffy_id());
 
         let root = self.root;
         let (mut elements, relations) = self.split();
