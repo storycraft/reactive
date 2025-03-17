@@ -98,20 +98,16 @@ impl UiTree {
         struct Cleanup;
         impl TreeVisitorMut for Cleanup {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                elements[id].as_mut().node_mut().cleanup();
+                let Some(element) = elements.try_get_mut(id) else {
+                    return;
+                };
 
+                element.node_mut().cleanup();
                 visitor::visit_mut(self, id, elements, relations);
             }
         }
 
-        let parent = {
-            let Some(relation) = self.relations.get_mut(id) else {
-                return;
-            };
-
-            relation.parent.take()
-        };
-
+        let parent = self.parent(id).take();
         let (ref mut elements, relations) = self.split();
         Cleanup.visit_mut(id, elements, relations);
 
@@ -198,7 +194,7 @@ impl UiTree {
         struct MarkDirty;
         impl TreeVisitorMut for MarkDirty {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let Some(element) = elements.get_mut(id) else {
+                let Some(element) = elements.try_get_mut(id) else {
                     return;
                 };
                 element.node_mut().cache.clear();
@@ -235,7 +231,7 @@ impl UiTree {
 
         impl TreeVisitorMut for UpdateMatrix {
             fn visit_mut(&mut self, id: ElementId, elements: &mut Elements, relations: Relations) {
-                let mut element = elements[id].as_mut();
+                let mut element = elements.get_mut(id);
                 let matrix = self.matrix * element.transform.to_matrix();
                 let inverse_matrix = self.inverse_matrix * element.transform.to_inverse_matrix();
 
