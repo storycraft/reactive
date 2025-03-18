@@ -9,4 +9,4 @@ license = "Apache-2.0 or MIT"
 
 [workspace.dependencies]
 reactivity = { path = "./reactivity" }
-reactivity-macro = { path = "./reactivity-macro" }
+reactivity-macro = { path = "./macro" }
