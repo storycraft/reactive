@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "examples/*"]
+members = ["reactivity", "macro"]
 resolver = "2"
 
 [workspace.package]
@@ -8,9 +8,5 @@ edition = "2024"
 license = "Apache-2.0 or MIT"
 
 [workspace.dependencies]
-reactivity-winit = { path = "crates/reactivity-winit" }
-reactive = { path = "crates/reactive" }
-reactive-tree = { path = "crates/reactive-tree" }
-reactive-event = { path = "crates/reactive-event" }
-reactivity = { path = "crates/reactivity" }
-reactivity-macro = { path = "crates/reactivity-macro" }
+reactivity = { path = "./reactivity" }
+reactivity-macro = { path = "./reactivity-macro" }
